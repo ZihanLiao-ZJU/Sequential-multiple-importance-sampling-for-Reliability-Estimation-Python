@@ -31,7 +31,16 @@ class SuS:
         obj = copy.copy(self)
         u = flat(u)
         x = U2X(obj, u)
-        g_val = np.asarray(obj.TF.EvlLSF(x), dtype=float).ravel()
+        g_val = np.asarray(obj.TF.EvlLSF(x), dtype=float)
+        if obj.TF.Nfun == 1 and g_val.ndim <= 2 and (g_val.ndim < 2 or 1 in g_val.shape):
+            # Retain the single-function row/column-vector API while preserving
+            # separate function rows for multi-performance outputs.
+            g_val = g_val.reshape(1, -1)
+        elif obj.TF.Nfun > 1 and u.shape[1] == 1 and g_val.ndim == 1:
+            g_val = g_val[:, None]
+        if g_val.shape != (obj.TF.Nfun, u.shape[1]):
+            raise ValueError("EvlLSF must return an array of shape (Nfun, Nsam), "
+                             "or a vector of length Nsam when Nfun is 1")
         obj.X = u
         obj.Y = np.vstack([logGauss(u), g_val])
         obj.Ncal = u.shape[1]

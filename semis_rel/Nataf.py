@@ -63,7 +63,9 @@ class Nataf:
                     d1 = self.Marg_X[i].DistributionName.lower()
                     d2 = self.Marg_X[j].DistributionName.lower()
                     rho_x = self.Rho_X[i, j]
-                    if d1 == "normal" and d2 == "normal":
+                    if rho_x == 0:
+                        Rho_U[i, j] = 0.0
+                    elif d1 == "normal" and d2 == "normal":
                         Rho_U[i, j] = rho_x
                     elif d1 == "normal" and d2 == "lognormal":
                         cv_j = self.Marg_X[j].std() / self.Marg_X[j].mean()
@@ -90,7 +92,8 @@ class Nataf:
                                 np.exp(-1 / (2 * (1 - rho_u ** 2)) *
                                        (u[:, 0] ** 2 - 2 * rho_u * u[:, 0] * u[:, 1] + u[:, 1] ** 2))))
 
-                        res = minimize_scalar(rhoU2X_err, bounds=(0, 1), method="bounded",
+                        bounds = (-1, 0) if rho_x < 0 else (0, 1)
+                        res = minimize_scalar(rhoU2X_err, bounds=bounds, method="bounded",
                                               options={"xatol": 1e-4})
                         Rho_U[i, j] = res.x
                     Rho_U[j, i] = Rho_U[i, j]
@@ -110,11 +113,11 @@ class Nataf:
         for idim in range(self.Ndim):
             marg = self.Marg_X[idim]
             name = marg.DistributionName.lower()
-            if name == "normal":
+            if name == "normal" and all(hasattr(marg, p) for p in ("mu", "sigma")):
                 X[idim] = marg.mu + marg.sigma * Z[idim]
-            elif name == "lognormal":
+            elif name == "lognormal" and all(hasattr(marg, p) for p in ("mu", "sigma")):
                 X[idim] = np.exp(marg.mu + marg.sigma * Z[idim])
-            elif name == "generalized extreme value":
+            elif name == "generalized extreme value" and all(hasattr(marg, p) for p in ("mu", "sigma", "k")):
                 p = np.clip(norm.cdf(Z[idim]), 1e-15, 1 - 1e-15)
                 if abs(marg.k) < 1e-12:
                     X[idim] = marg.mu - marg.sigma * np.log(-np.log(p))

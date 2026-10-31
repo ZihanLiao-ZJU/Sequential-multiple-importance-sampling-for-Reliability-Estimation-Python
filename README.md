@@ -65,11 +65,18 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 │   ├── Nataf.py, distributions.py
 │   ├── limit_state_functions/   # built-in performance functions Ex1 ... Ex12
 │   ├── support_functions/       # sampler (aCS), MIS weights, seed selection, ...
-│   └── log_operations.py        # log-domain arithmetic (logsum, logplus, logmean, ...)
+│   ├── operations_on_logarithmic_values/  # one .py file per MATLAB log function
+│   └── log_operations.py                # backward-compatible imports
 ├── validation/                  # recorded fixtures used by validate.py
 ├── LICENSE
 └── README.md
 ```
+
+The logarithmic helpers use matching MATLAB/Python filenames: `logsum`,
+`logmean`, `logplus`, `logminus`, `logmultiply`, `logcumsum`, and `logstd`.
+Their Python implementations are in `operations_on_logarithmic_values/`;
+existing imports from `log_operations` remain supported.
+
 
 ## Quick start
 

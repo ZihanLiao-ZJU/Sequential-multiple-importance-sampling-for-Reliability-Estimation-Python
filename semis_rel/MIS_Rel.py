@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 from ._utils import flat, nanmax, reshape_F, tail_shape
-from .log_operations import logmean, logsum
+from .operations_on_logarithmic_values import logmean, logsum
 from .support_functions.MisInt import MisInt
 from .support_functions.MoveBlock import MoveBlock
 from .support_functions.WgtMis_Blc import WgtMis_Blc

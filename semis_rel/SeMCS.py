@@ -1,6 +1,7 @@
 """Sequential Monte Carlo driver shared by the reliability toolboxes."""
 import copy
 import numpy as np
+from .support_functions.SedSlt import SedSlt
 
 
 class SeMCS:
@@ -32,7 +33,9 @@ class SeMCS:
         gs = [copy.deepcopy(self.G[0] if len(self.G) else model.G)]
         hs = [copy.deepcopy(self.H[0] if len(self.H) else getattr(model, "H", None))]
         model = copy.copy(model)
-        model.G = gs[0]
+        model.G = (gs[0] if isinstance(gs[0], dict)
+                   else dict(model.G, parameters=gs[0]))
+        gs[0] = copy.deepcopy(model.G)
         if hs[0] is not None:
             model.H = hs[0]
         sampler.BayStc = model
@@ -52,7 +55,13 @@ class SeMCS:
             scales.append(getattr(sampler, "sigma", None))
             if level + 1 < len(self.G):
                 model = copy.copy(model)
-                model.G = self.G[level + 1]
+                previous_state = model.G
+                specified = copy.deepcopy(self.G[level + 1])
+                model.G = (dict(previous_state, **specified) if isinstance(specified, dict)
+                           else dict(previous_state, parameters=specified))
+                for key in ("lambda", "HMC_time"):
+                    if key in previous_state:
+                        model.G[key] = previous_state[key]
                 if level + 1 < len(self.H):
                     model.H = self.H[level + 1]
             else:
@@ -65,7 +74,8 @@ class SeMCS:
             if counts.size > 1 and level + 1 >= counts.size:
                 raise ValueError("NumSam schedule exhausted before seed selection")
             target = int(counts[0] if counts.size == 1 else counts[level + 1])
-            xseed, yseed, indices = sampler.SltSed(x, y, target)
+            xseed, yseed = SedSlt(model, x, y, target)
+            indices = None
             selected.append(indices)
             nc = xseed.shape[1]
             steps = int(np.floor(target / nc + 0.5)) if nc else 0

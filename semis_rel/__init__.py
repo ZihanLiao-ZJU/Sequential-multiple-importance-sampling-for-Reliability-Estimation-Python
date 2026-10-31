@@ -22,3 +22,8 @@ from .support_functions.aCS import aCS
 __all__ = ["MIS", "Nataf", "SeMCS", "SeMIS_high_dimension", "SeMIS_low_dimension", "SuS",
            "Distribution", "makedist", "PF_REF", "Ex1", "Ex2", "Ex3", "Ex4", "Ex5", "Ex6", "Ex7",
            "Ex8", "Ex9", "Ex10", "Ex11", "Ex12", "aCS"]
+
+from .support_functions.CW_aMH import CW_aMH
+from .support_functions.HMC import HMC
+from .support_functions.ES import ES
+__all__ += ["CW_aMH", "HMC", "ES"]

@@ -2,6 +2,8 @@
 
 The driver chooses coordinates and the threshold convention explicitly. This
 class does not run iterations; SeMCS owns sampling and stopping.
+Both coordinate selectors store Gaussian u; they choose PF.Dist or PF.Rdis
+to map u to physical performance-function inputs.
 """
 import copy
 import numpy as np
@@ -16,9 +18,9 @@ class SuS:
             raise ValueError("threshold_rule must be hazen or midpoint")
         self.TF = PF
         self.Nfun = getattr(PF, "Nfun", getattr(PF, "nfun", 1)) + 3
-        self.Ndim = getattr(PF, "Ndim", 2)
+        self.Ndim = PF.Ndim
         self.Ncal = self.X = self.Y = None
-        self.G = np.array(np.inf)
+        self.G = dict(parameters=np.array(np.inf), p=0.1, L=np.eye(self.Ndim))
         self.H = np.array(np.nan)
         self.p = 0.1
         self.Nsam = 1000
@@ -34,9 +36,8 @@ class SuS:
             x = self.TF.Dist.U2X(u)
             log_pdf = -0.5 * (self.Ndim * np.log(2 * np.pi) + np.sum(u * u, axis=0))
         else:
-            x = u
-            # Physical-input objects supply their own prior (including underflow policy).
-            log_pdf = self.TF.log_reference(u)
+            x = self.TF.Rdis.U2X(u) if hasattr(self.TF, "Rdis") else u
+            log_pdf = -0.5 * (self.Ndim * np.log(2 * np.pi) + np.sum(u * u, axis=0))
         values = self.TF.EvlLSF(x) if hasattr(self.TF, "EvlLSF") else self.TF.evaluate(x)
         values = np.asarray(values, dtype=float)
         nf = self.Nfun - 3
@@ -53,7 +54,7 @@ class SuS:
 
     def EvlLKF(self):
         with np.errstate(divide="ignore"):
-            return np.log((self.Y[1, :] < self.G).astype(float))
+            return np.log((self.Y[1, :] < self.G["parameters"]).astype(float))
 
     def EvlPDF(self):
         return self.Y[0, :]
@@ -73,10 +74,10 @@ class SuS:
             threshold = np.quantile(values, obj.p, method="hazen")
         if self.clip_threshold:
             threshold = max(threshold, 0)
-        obj.G = np.array(threshold)
+        obj.G = dict(obj.G, parameters=np.array(threshold), p=obj.p)
         return y, obj.G, obj, 0
 
     @property
     def FlgCvg(self):
-        return bool(self.G <= 0)
+        return bool(self.G["parameters"] <= 0)
 

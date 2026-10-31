@@ -12,12 +12,12 @@ def estimate_pf(result, clip_threshold=True):
     for i, y in enumerate(result["y"]):
         values = np.asarray(y).reshape(np.shape(y)[0], -1, order="F")[3, :]
         threshold = (0 if i == len(result["y"]) - 1 and not clip_threshold
-                     else result["g"][i + 1])
+                     else result["g"][i + 1]["parameters"])
         probability *= np.mean(values < threshold)
     return probability
 
 
-def drive_SuS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50):
+def drive_SuS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, sampler_name="aCS"):
     if isinstance(example, int):
         example = f"Ex{example}"
     if repeats < 1 or N < 20:
@@ -28,7 +28,7 @@ def drive_SuS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50):
         cls = getattr(sr, example)
         pf = cls(ndim) if example in HIGH_DIM else cls()
         model = sr.SuS(pf, "standard_normal", "hazen", True)
-        sampler = sr.aCS(model)
+        sampler = getattr(sr, sampler_name)(model)
         engine = sr.SeMCS(sampler)
         engine.NumSam = N
         engine.Verbose = False
@@ -48,7 +48,8 @@ if __name__ == "__main__":
     parser.add_argument("--samples", type=int, default=1000)
     parser.add_argument("--repeats", type=int, default=100)
     parser.add_argument("--seed", type=int, default=2026)
+    parser.add_argument("--sampler", choices=["CW_aMH", "aCS", "HMC", "ES"], default="aCS")
     args = parser.parse_args()
-    results = drive_SuS(args.example, args.samples, args.repeats, args.seed, args.ndim)
+    results = drive_SuS(args.example, args.samples, args.repeats, args.seed, args.ndim, args.sampler)
     print("Mean failure probability:", results["mean"])
     print("Mean joint evaluations:", results["mean_joint_calls"])

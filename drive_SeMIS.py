@@ -18,13 +18,13 @@ import numpy as np
 
 from semis_rel.support_functions.results import summarize
 
-from semis_rel import (PF_REF, MIS, SeMCS, SeMIS_high_dimension, SeMIS_low_dimension, aCS,  # noqa: F401
+from semis_rel import (PF_REF, MIS, SeMCS, SeMIS_high_dimension, SeMIS_low_dimension, aCS, CW_aMH, HMC, ES,  # noqa: F401
                        Ex1, Ex2, Ex3, Ex4, Ex5, Ex6, Ex7, Ex8, Ex9, Ex10, Ex11, Ex12)
 
 HIGH_DIM = ("Ex10", "Ex11", "Ex12")
 
 
-def build(example, ndim=50, N=1000):
+def build(example, ndim=50, N=1000, sampler_name="aCS"):
     # -------- Custom example ------------------------------------------------
     # Low-dimensional examples (paper Table 1, n < 20):
     #   Ex1   piecewise-linear (2D),       Pf_ref = 3.20e-5
@@ -48,7 +48,7 @@ def build(example, ndim=50, N=1000):
     IntBay = SeMIS_high_dimension(Tfun) if Tfun.Ndim >= 20 else SeMIS_low_dimension(Tfun)
 
     # -------- Sampler and SeMIS settings ------------------------------------
-    sampler = aCS()                    # pMCMC sampler (Eqn. 22-23)
+    sampler = {"CW_aMH": CW_aMH, "aCS": aCS, "HMC": HMC, "ES": ES}[sampler_name]()                    # pMCMC sampler (Eqn. 22-23)
     sampler.BayStc = IntBay
     semcs = SeMCS(sampler)
     semcs.NumSam = N                # sample size per level (N)
@@ -56,9 +56,9 @@ def build(example, ndim=50, N=1000):
 
 
 def one_run(args):
-    example, ndim, seed, cov, N = args
+    example, ndim, seed, cov, N, sampler_name = args
     np.random.seed(seed)
-    _, semcs = build(example, ndim, N)
+    _, semcs = build(example, ndim, N, sampler_name)
     semcs.Verbose = False
     out_semcs = semcs.RunIte()         # sequential sampling (Algorithm 1)
     mis = MIS(out_semcs)           # MIS estimator (Eqn. 9-10, 33)
@@ -66,7 +66,7 @@ def one_run(args):
     return mis.Pf_hat, np.sum(out_semcs["Ncal"]), cv_lw, cv_up
 
 
-def drive_SeMIS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, cov=False):
+def drive_SeMIS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, cov=False, sampler_name="aCS"):
     """Run independent repeats, retaining every outcome and evaluation count."""
     if isinstance(example, int):
         example = f"Ex{example}"
@@ -75,7 +75,7 @@ def drive_SeMIS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, cov=Fals
     records = []
     for i in range(repeats):
         np.random.seed(seed + i)
-        _, engine = build(example, ndim, N)
+        _, engine = build(example, ndim, N, sampler_name)
         out = engine.RunIte()
         estimator = MIS(out)
         row = dict(seed=seed + i, probability=estimator.Pf_hat.tolist(),
@@ -100,6 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--cov", action="store_true", help="estimate the single-run CoV bounds")
     parser.add_argument("--workers", type=int, default=1, help="parallel worker processes (default 1)")
     parser.add_argument("--seed", type=int, default=2026, help="base random seed; run i uses seed + i")
+    parser.add_argument("--sampler", choices=["CW_aMH", "aCS", "HMC", "ES"], default="aCS")
     args = parser.parse_args()
 
     Tfun, _ = build(args.example, args.ndim)
@@ -108,7 +109,7 @@ if __name__ == "__main__":
     N_run = args.nrun
 
     # -------- independent runs ----------------------------------------------
-    jobs = [(args.example, args.ndim, args.seed + irun, args.cov, args.samples) for irun in range(N_run)]
+    jobs = [(args.example, args.ndim, args.seed + irun, args.cov, args.samples, args.sampler) for irun in range(N_run)]
     if args.workers > 1:
         with ProcessPoolExecutor(args.workers) as ex:
             res = list(ex.map(one_run, jobs))

@@ -96,7 +96,7 @@ class SeMIS_high_dimension:
         """log rPDF pi_i(u) (Eqn. 12)."""
         return logGauss(self.X, self.G["mu_pi"], self.G["Sigma"])
 
-    def UpdObj(self, u, y):
+    def UpdObj(self, u, y, p=None):
         """Update l_i (Eqn. 24), fit the PLS hyperplane on the seeds (Eqn. 26) and
         set the conservative threshold l_hat (Eqn. 27). Returns (y, g, obj, N_cal)."""
         obj = copy.copy(self)
@@ -104,6 +104,8 @@ class SeMIS_high_dimension:
         g_val = y2[3, :]
         u2 = flat(u)
         g = dict(obj.G)
+        if p is not None:
+            g["p"] = p
         n_sam = u2.shape[1]
 
         l = max(np.quantile(g_val, g["p"], method="hazen"), 0)   # threshold l_i (Eqn. 24)

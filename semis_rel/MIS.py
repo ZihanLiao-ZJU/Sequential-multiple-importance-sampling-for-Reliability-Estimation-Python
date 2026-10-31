@@ -11,7 +11,7 @@ from .support_functions.WgtMis_Blc import WgtMis_Blc
 _REALMIN = np.finfo(float).tiny
 
 
-class MIS_Rel:
+class MIS:
     """Multiple-importance-sampling reliability estimator (Pf + CoV bounds).
 
     Failure-probability estimator (Eqn. 9-10, 33) and single-run uncertainty

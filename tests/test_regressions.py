@@ -10,8 +10,8 @@ import numpy as np
 from scipy import stats
 
 import validate
-from semis_rel import Distribution, Ex1, MIS_Rel, Nataf, SeMIS, SuS, aCS, makedist
-from semis_rel.log_operations import logcumsum
+from semis_rel import Distribution, Ex1, MIS, Nataf, SeMCS, SuS, aCS, makedist
+from semis_rel.operations_on_logarithmic_values import logcumsum
 
 
 class NatafTests(unittest.TestCase):
@@ -97,13 +97,13 @@ class SuSTests(unittest.TestCase):
         with mock.patch.object(model.TF, 'EvlLSF', return_value=np.array([1., 2.])):
             self.assertEqual(model.EvlY(np.zeros((2, 1))).Y.shape, (3, 1))
         np.random.seed(21)
-        sampler = SeMIS(model, aCS())
+        sampler = SeMCS(aCS(model))
         sampler.NumSam = 200
         sampler.Verbose = False
         output = sampler.RunIte()
         self.assertTrue(output['flg_cvg'])
         self.assertTrue(all(y.shape[0] == 5 for y in output['y']))
-        pf = MIS_Rel(output).Pf_hat
+        pf = MIS(output).Pf_hat
         self.assertEqual(pf.shape, (2,))
         self.assertTrue(np.all(np.isfinite(pf)))
 

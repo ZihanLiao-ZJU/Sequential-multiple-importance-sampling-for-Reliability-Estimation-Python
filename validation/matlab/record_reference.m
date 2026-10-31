@@ -1,5 +1,5 @@
 function record_reference(matlab_repo, method, example, Ndim, seed, outdir)
-% Run the ORIGINAL MATLAB code once and record every random number drawn.
+% Run the MATLAB framework once and record every random number drawn.
 %
 %   record_reference('/path/to/Sequential-multiple-importance-sampling-for-Reliability-Estimation', ...
 %                    'high', 'Ex10', 50, 1, '../reference')
@@ -31,19 +31,25 @@ end
 switch method
     case 'low',  IntBay = SeMIS_low_dimension(Tfun);
     case 'high', IntBay = SeMIS_high_dimension(Tfun);
-    case 'sus',  IntBay = SuS(Tfun);
+    case 'sus',  IntBay = SuS(Tfun, 'standard_normal', 'hazen', true);
 end
 rec_reset();
-semcs = SeMIS(IntBay, aCS);
+sampler = aCS;
+sampler.BayStc = IntBay;
+semcs = SeMCS(sampler);
 semcs.NumSam = 1000;
 out = semcs.RunIte;
 Ncal = sum(out.Ncal); Nite = out.Nite;
 u_last = out.x{end};
 if strcmp(method, 'sus')
-    Pf = IntBay.EvlPf(out); cv_lw = nan; cv_up = nan;
+    Pf = 1;
+    for j = 1:out.Nite
+        Pf = Pf * mean(out.y{j}(4,:) < out.g{j+1});
+    end
+    cv_lw = nan; cv_up = nan;
     l = cell2mat(out.g);
 else
-    mis = MIS_Rel(out); Pf = mis.Pf_hat;
+    mis = MIS(out); Pf = mis.Pf_hat;
     [cv_lw, cv_up] = mis.estimateCov;
     l = cellfun(@(s) s.l, out.g);
 end

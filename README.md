@@ -54,19 +54,19 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 ```
 .
 ├── drive_SeMIS.py               # main driver: selected example, 100 independent runs
+├── drive_SuS.py                # SuS experiment driver
 ├── validate.py                  # recorded-reference and statistical checks
 ├── semis_rel/
-│   ├── SeMIS.py                 # sequential sampling framework (Algorithm 1)
+│   ├── SeMCS.py                 # sequential sampling framework (Algorithm 1)
 │   ├── SeMIS_low_dimension.py   # intermediate distributions, Kriging-based truncation (Eqn. 25)
 │   ├── SeMIS_high_dimension.py  # intermediate distributions, PLS-based truncation (Eqn. 26)
-│   ├── MIS_Rel.py               # MIS estimator and optional single-run CoV bounds (Eqn. 34–58)
+│   ├── MIS.py               # MIS estimator and optional single-run CoV bounds (Eqn. 34–58)
 │   ├── SuS.py                   # subset simulation, used as a comparison baseline
 │   ├── surrogates.py            # Gaussian process regression (fitrgp/predict) and PLS regression (plsregress)
 │   ├── Nataf.py, distributions.py
 │   ├── limit_state_functions/   # built-in performance functions Ex1 ... Ex12
 │   ├── support_functions/       # sampler (aCS), MIS weights, seed selection, ...
 │   ├── operations_on_logarithmic_values/  # one .py file per MATLAB log function
-│   └── log_operations.py                # backward-compatible imports
 ├── validation/                  # recorded fixtures used by validate.py
 ├── LICENSE
 └── README.md
@@ -74,8 +74,7 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 
 The logarithmic helpers use matching MATLAB/Python filenames: `logsum`,
 `logmean`, `logplus`, `logminus`, `logmultiply`, `logcumsum`, and `logstd`.
-Their Python implementations are in `operations_on_logarithmic_values/`;
-existing imports from `log_operations` remain supported.
+Their Python implementations are in `operations_on_logarithmic_values/`.
 
 
 ## Quick start
@@ -86,23 +85,48 @@ Run the driver from the repository root:
 python drive_SeMIS.py
 ```
 
-By default this runs Example 1 (`Ex1`) with 100 independent runs and prints the estimated failure probability, its empirical CoV, and the average number of performance-function evaluations. The MATLAB driver uses `parfor`; here `--workers 4` runs the independent runs in 4 processes. Other options: `--example Ex10` selects an example, `--nrun` sets the number of runs, `--cov` adds the single-run CoV bounds and `--seed` fixes the random seeds.
+By default this runs Example 1 (`Ex1`) with 100 independent runs and prints the estimated failure probability, its empirical CoV, and the average number of performance-function evaluations. The drivers run repetitions serially by default; `--workers 4` runs the Python independent runs in 4 processes. Other options: `--example Ex10` selects an example, `--repeats` sets the number of runs, `--cov` adds the single-run CoV bounds and `--seed` fixes the random seeds.
 
 The same steps from Python code:
 
 ```python
-from semis_rel import Ex1, SeMIS_low_dimension, SeMIS, aCS, MIS_Rel
+from semis_rel import Ex1, SeMIS_low_dimension, SeMCS, aCS, MIS
 
 Tfun = Ex1()
 IntBay = SeMIS_low_dimension(Tfun)     # SeMIS_high_dimension(Tfun) for n >= 20
-semcs = SeMIS(IntBay, aCS())
+sampler = aCS(IntBay)
+semcs = SeMCS(sampler)
 semcs.NumSam = 1000                    # sample size per level (N)
 
 out_semcs = semcs.RunIte()             # sequential sampling (Algorithm 1)
-mis = MIS_Rel(out_semcs)               # MIS estimator (Eqn. 9-10, 33)
+mis = MIS(out_semcs)               # MIS estimator (Eqn. 9-10, 33)
 print(mis.Pf_hat, out_semcs["Ncal"].sum())
 cv_lw, cv_up = mis.estimateCov()       # optional single-run CoV bounds (Eqn. 34-58)
 ```
+
+The same shared structure is used by the GSS-MIS toolbox: `SeMCS` owns iteration;
+`SeMIS_low_dimension`, `SeMIS_high_dimension`, and `SuS` only define intermediate
+distributions and convergence; `MIS` estimates probabilities after sampling.
+The `SeMCS.py` and `SuS.py` implementations are identical in the two Python toolboxes.
+
+```python
+from drive_SeMIS import drive_SeMIS
+from drive_SuS import drive_SuS
+result = drive_SeMIS(example="Ex10", N=1000, repeats=10, seed=2026, ndim=50)
+baseline = drive_SuS(example="Ex10", N=1000, repeats=10, seed=2026, ndim=50)
+print(result["mean"], result["cov"], result["mean_joint_calls"])
+```
+
+Drivers share `(example, N, repeats, seed)` and return summary dictionaries with
+`mean`, `standard_deviation`, `cov`, `mean_joint_calls`, `unfinished`, and `records`.
+`ndim` selects the dimension of Ex10–Ex12; `cov=True` adds the SeMIS single-run
+bounds to each record. CLI options include `--samples`, `--repeats`, and `--seed`.
+
+SuS explicitly uses `SuS(PF, "standard_normal", "hazen", True)`. The GSS driver
+selects physical coordinates and its midpoint/unclipped convention using the same
+class. The product estimator belongs to `drive_SuS`. `NumSam` accepts a scalar or
+per-level vector; finite schedules must include each required next level and
+raise a clear error if exhausted. `G` optionally supplies predefined distributions.
 
 ## Built-in examples
 
@@ -131,7 +155,7 @@ The driver uses `SeMIS_high_dimension` (PLS-based truncation) for n ≥ 20, i.e.
 2. Define:
    - `Dist`: probabilistic model of the input vector `X`, a `Nataf` object built from a list of marginal distributions (`makedist`) and their correlation matrix;
    - `Ndim`, `Nfun`: input dimension and number of performance functions;
-   - `EvlLSF(self, x)`: evaluates the performance function on the samples `x` (`Ndim × Nsam`, in the physical space given by `Dist`), where `g < 0` is the failure domain; for a single performance function, return a vector of length `Nsam` (SuS accepts either a row or column vector). `SuS` additionally accepts an `(Nfun, Nsam)` matrix, one performance function per row; its first row controls the sampling thresholds, while `MIS_Rel` retains all rows for estimation.
+   - `EvlLSF(self, x)`: evaluates the performance function on the samples `x` (`Ndim × Nsam`, in the physical space given by `Dist`), where `g < 0` is the failure domain; for a single performance function, return a vector of length `Nsam` (SuS accepts either a row or column vector). `SuS` additionally accepts an `(Nfun, Nsam)` matrix, one performance function per row; its first row controls the sampling thresholds, while `MIS` retains all rows for estimation.
 3. Run SeMIS with `IntBay = SeMIS_low_dimension(MyProblem())` for n < 20 or `IntBay = SeMIS_high_dimension(MyProblem())` for n ≥ 20, as in the Python example above.
 
 Minimal example: a linear limit state in two standard normal variables, with `Pf = Φ(−3.5)`.
@@ -177,11 +201,11 @@ cv_lw, cv_up = mis.estimateCov()   # single-run CoV bounds (Eqn. 34–58)
 
 | Step | Code | Paper |
 |---|---|---|
-| Sequence of intermediate distributions | `SeMIS.RunIte` / `UpdObj` | Eqn. (11)–(21), (24)–(27) |
+| Sequence of intermediate distributions | `SeMCS.RunIte` / `UpdObj` | Eqn. (11)–(21), (24)–(27) |
 | pCN-MCMC sampling with adaptive step | `support_functions/aCS.py` | Eqn. (22)–(23), Algorithm 2 |
-| Normalizing constants of the ISDs | `MIS_Rel.normalizeY` | Eqn. (28)–(32) |
-| Balance-heuristic MIS estimator | `MIS_Rel` / `WgtMis_Blc` / `MisInt` | Eqn. (4)–(10), (33) |
-| CoV bounds (optional) | `MIS_Rel.estimateCov` | Eqn. (34)–(58), App. A–C |
+| Normalizing constants of the ISDs | `MIS.normalizeY` | Eqn. (28)–(32) |
+| Balance-heuristic MIS estimator | `MIS` / `WgtMis_Blc` / `MisInt` | Eqn. (4)–(10), (33) |
+| CoV bounds (optional) | `MIS.estimateCov` | Eqn. (34)–(58), App. A–C |
 
 ## Tests
 
@@ -198,7 +222,7 @@ The replay command requires all 15 recording/result pairs in `validation/referen
 
 - Frozen SciPy distribution wrappers use their inverse CDF when explicit distribution parameters are unavailable.
 - Nataf correlation conversion supports positive, negative and zero target correlations.
-- `SuS.EvlY` preserves `(Nfun, Nsam)` performance-function matrices. The first function determines the SuS sampling thresholds; `MIS_Rel` retains all rows for estimation.
+- `SuS.EvlY` preserves `(Nfun, Nsam)` performance-function matrices. The first function determines the SuS sampling thresholds; `MIS` retains all rows for estimation.
 - Gaussian process regression and PLS regression are implemented in `semis_rel/surrogates.py`. The Gaussian process uses an ARD squared-exponential kernel, a constant basis, standardized predictors, exact fitting and prediction, and bounded L-BFGS-B optimization. The noise standard deviation is bounded below by `1e-2 * std(y)`.
 - Kriging predictions are evaluated one query point at a time with fixed memory alignment to keep support checks consistent across calls.
 - `RunIte` returns a dictionary; the Kriging and PLS ISD parameters `G` are dictionaries.

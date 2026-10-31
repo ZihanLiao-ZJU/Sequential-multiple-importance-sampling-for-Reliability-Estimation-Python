@@ -1,7 +1,7 @@
 """SeMIS driver.
 
 Python port of drive_SeMIS.m: runs Sequential Multiple Importance Sampling
-(SeMIS) on a selected performance-function example with independent runs and
+(SeMCS) on a selected performance-function example with independent runs and
 estimates the failure probability P_hat_f (Eqn. 9-10, 33).
 
     python drive_SeMIS.py                        # Example 1, 100 runs (as in MATLAB)
@@ -16,13 +16,15 @@ from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 
-from semis_rel import (PF_REF, MIS_Rel, SeMIS, SeMIS_high_dimension, SeMIS_low_dimension, aCS,  # noqa: F401
+from semis_rel.support_functions.results import summarize
+
+from semis_rel import (PF_REF, MIS, SeMCS, SeMIS_high_dimension, SeMIS_low_dimension, aCS,  # noqa: F401
                        Ex1, Ex2, Ex3, Ex4, Ex5, Ex6, Ex7, Ex8, Ex9, Ex10, Ex11, Ex12)
 
 HIGH_DIM = ("Ex10", "Ex11", "Ex12")
 
 
-def build(example, ndim):
+def build(example, ndim=50, N=1000):
     # -------- Custom example ------------------------------------------------
     # Low-dimensional examples (paper Table 1, n < 20):
     #   Ex1   piecewise-linear (2D),       Pf_ref = 3.20e-5
@@ -47,30 +49,57 @@ def build(example, ndim):
 
     # -------- Sampler and SeMIS settings ------------------------------------
     sampler = aCS()                    # pMCMC sampler (Eqn. 22-23)
-    semcs = SeMIS(IntBay, sampler)
-    semcs.NumSam = 1000                # sample size per level (N)
+    sampler.BayStc = IntBay
+    semcs = SeMCS(sampler)
+    semcs.NumSam = N                # sample size per level (N)
     return Tfun, semcs
 
 
 def one_run(args):
-    example, ndim, seed, cov = args
+    example, ndim, seed, cov, N = args
     np.random.seed(seed)
-    _, semcs = build(example, ndim)
+    _, semcs = build(example, ndim, N)
     semcs.Verbose = False
     out_semcs = semcs.RunIte()         # sequential sampling (Algorithm 1)
-    mis = MIS_Rel(out_semcs)           # MIS estimator (Eqn. 9-10, 33)
+    mis = MIS(out_semcs)           # MIS estimator (Eqn. 9-10, 33)
     cv_lw, cv_up = mis.estimateCov() if cov else (np.nan, np.nan)   # single-run CoV bounds (Eqn. 34-58)
     return mis.Pf_hat, np.sum(out_semcs["Ncal"]), cv_lw, cv_up
+
+
+def drive_SeMIS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, cov=False):
+    """Run independent repeats, retaining every outcome and evaluation count."""
+    if isinstance(example, int):
+        example = f"Ex{example}"
+    if repeats < 1 or N < 20:
+        raise ValueError("repeats must be positive and N at least 20")
+    records = []
+    for i in range(repeats):
+        np.random.seed(seed + i)
+        _, engine = build(example, ndim, N)
+        out = engine.RunIte()
+        estimator = MIS(out)
+        row = dict(seed=seed + i, probability=estimator.Pf_hat.tolist(),
+                   joint_calls=int(np.sum(out["Ncal"])),
+                   layer_joint_calls=[out["Ncal"].tolist()],
+                   actual_level_samples=[out["Nsam"].tolist()],
+                   completed=bool(out["flg_cvg"]))
+        if cov:
+            lower, upper = estimator.estimateCov()
+            row["cov_lower"] = np.atleast_1d(lower).tolist()
+            row["cov_upper"] = np.atleast_1d(upper).tolist()
+        records.append(row)
+    return summarize(example, "SeMIS", N, repeats, seed, records)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--example", default="Ex1", help="Ex1 ... Ex12 (default Ex1)")
     parser.add_argument("--ndim", type=int, default=50, help="dimension of Ex10-Ex12 (default 50)")
-    parser.add_argument("--nrun", type=int, default=100, help="number of independent runs (default 100)")
+    parser.add_argument("--repeats", "--nrun", dest="nrun", type=int, default=100, help="number of independent runs (default 100)")
+    parser.add_argument("--samples", type=int, default=1000)
     parser.add_argument("--cov", action="store_true", help="estimate the single-run CoV bounds")
     parser.add_argument("--workers", type=int, default=1, help="parallel worker processes (default 1)")
-    parser.add_argument("--seed", type=int, default=0, help="base random seed; run i uses seed + i")
+    parser.add_argument("--seed", type=int, default=2026, help="base random seed; run i uses seed + i")
     args = parser.parse_args()
 
     Tfun, _ = build(args.example, args.ndim)
@@ -79,7 +108,7 @@ if __name__ == "__main__":
     N_run = args.nrun
 
     # -------- independent runs ----------------------------------------------
-    jobs = [(args.example, args.ndim, args.seed + irun, args.cov) for irun in range(N_run)]
+    jobs = [(args.example, args.ndim, args.seed + irun, args.cov, args.samples) for irun in range(N_run)]
     if args.workers > 1:
         with ProcessPoolExecutor(args.workers) as ex:
             res = list(ex.map(one_run, jobs))

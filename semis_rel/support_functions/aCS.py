@@ -1,7 +1,8 @@
 import numpy as np
 
 from .._utils import rand, randn
-from .SamGen import _L_pi
+from .SamGen import _L_pi, SamGen
+from .SedSlt import SedSlt
 
 
 class aCS:
@@ -22,12 +23,14 @@ class aCS:
     def __init__(self, BayStc=None):
         self.BayStc = BayStc
 
-    def SamGen(self, u_seed, y_seed, Ns):
+    def SamGen(self, u_seed, y_seed=None, Ns=None):
         """Generate MCMC samples targeting q_i = pi_i * L_i / z_i (Eqn. 21):
         pCN proposal (Eqn. 22) with adaptive scaling on the acceptance rate.
 
         Returns u [Ndim x Nc x Ns], y [Nfun x Nc x Ns], N_cal and the updated model.
         """
+        if Ns is None:
+            return SamGen(self.BayStc, int(u_seed))
         baystc = self.BayStc
         sedsav = self.SedSav
         Ndim = baystc.Ndim
@@ -91,3 +94,7 @@ class aCS:
             lambda_pcn = np.exp(np.log(lambda_pcn) + (acp - acp_opt) / np.sqrt(it))
             N_cal += dN_cal
         return u, y, N_cal, baystc
+
+    def SltSed(self, x, y, N):
+        xseed, yseed = SedSlt(self.BayStc, x, y, N)
+        return xseed, yseed, None

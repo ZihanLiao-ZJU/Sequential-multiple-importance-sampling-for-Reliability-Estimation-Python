@@ -1,79 +1,82 @@
+"""Subset Simulation intermediate distribution shared by both reliability toolboxes.
+
+The driver chooses coordinates and the threshold convention explicitly. This
+class does not run iterations; SeMCS owns sampling and stopping.
+"""
 import copy
-
 import numpy as np
-
-from ._utils import flat
-from .support_functions.U2X import U2X
-from .support_functions.logGauss import logGauss
 
 
 class SuS:
-    """Subset simulation with Nataf transformation for reliability problems.
-
-    SuS is a special, restricted case of the SeMIS framework (Section 3.2): no
-    variance inflation (sigma = 1) and no surrogate truncation; the ISF is
-    simply L_i(u) = I[g(u) < l_i].
-    """
-
-    def __init__(self, PF):
+    def __init__(self, PF, coordinate_system="standard_normal",
+                 threshold_rule="hazen", clip_threshold=True):
+        if coordinate_system not in ("standard_normal", "physical"):
+            raise ValueError("coordinate_system must be standard_normal or physical")
+        if threshold_rule not in ("hazen", "midpoint"):
+            raise ValueError("threshold_rule must be hazen or midpoint")
         self.TF = PF
-        self.Nfun = PF.Nfun + 3
-        self.Ndim = PF.Ndim
-        self.Ncal = None
-        self.X = None
-        self.Y = None
-        self.G = np.inf     # PF threshold l_i
+        self.Nfun = getattr(PF, "Nfun", getattr(PF, "nfun", 1)) + 3
+        self.Ndim = getattr(PF, "Ndim", 2)
+        self.Ncal = self.X = self.Y = None
+        self.G = np.array(np.inf)
+        self.H = np.array(np.nan)
         self.p = 0.1
         self.Nsam = 1000
+        self.coordinate_system = coordinate_system
+        self.threshold_rule = threshold_rule
+        self.clip_threshold = bool(clip_threshold)
 
     def EvlY(self, u):
-        """Evaluate y = [log phi_n(u); g(u)]."""
         obj = copy.copy(self)
-        u = flat(u)
-        x = U2X(obj, u)
-        g_val = np.asarray(obj.TF.EvlLSF(x), dtype=float)
-        if obj.TF.Nfun == 1 and g_val.ndim <= 2 and (g_val.ndim < 2 or 1 in g_val.shape):
-            # Retain the single-function row/column-vector API while preserving
-            # separate function rows for multi-performance outputs.
-            g_val = g_val.reshape(1, -1)
-        elif obj.TF.Nfun > 1 and u.shape[1] == 1 and g_val.ndim == 1:
-            g_val = g_val[:, None]
-        if g_val.shape != (obj.TF.Nfun, u.shape[1]):
-            raise ValueError("EvlLSF must return an array of shape (Nfun, Nsam), "
-                             "or a vector of length Nsam when Nfun is 1")
+        u = np.asarray(u)
+        u = u.reshape(u.shape[0], -1, order="F")
+        if self.coordinate_system == "standard_normal":
+            x = self.TF.Dist.U2X(u)
+            log_pdf = -0.5 * (self.Ndim * np.log(2 * np.pi) + np.sum(u * u, axis=0))
+        else:
+            x = u
+            # Physical-input objects supply their own prior (including underflow policy).
+            log_pdf = self.TF.log_reference(u)
+        values = self.TF.EvlLSF(x) if hasattr(self.TF, "EvlLSF") else self.TF.evaluate(x)
+        values = np.asarray(values, dtype=float)
+        nf = self.Nfun - 3
+        if nf == 1:
+            values = values.reshape(1, -1)
+        elif u.shape[1] == 1 and values.ndim == 1:
+            values = values[:, None]
+        if values.shape != (nf, u.shape[1]):
+            raise ValueError("Performance function must return (Nfun, Nsam)")
         obj.X = u
-        obj.Y = np.vstack([logGauss(u), g_val])
+        obj.Y = np.vstack([log_pdf, values])
         obj.Ncal = u.shape[1]
         return obj
 
     def EvlLKF(self):
-        """Intermediate likelihood log L_i = log I[g(u) < l_i]."""
         with np.errstate(divide="ignore"):
             return np.log((self.Y[1, :] < self.G).astype(float))
 
     def EvlPDF(self):
-        """Intermediate prior PDF pi = phi_n(u) (no inflation, sigma = 1)."""
         return self.Y[0, :]
 
-    def UpdObj(self, u, y):
-        """Update the threshold l_i (Eqn. 24, SuS case). Returns (y, l, obj, N_cal)."""
+    def UpdObj(self, u, y, p=None):
         obj = copy.copy(self)
-        g_val = flat(y)[3, :]
-        l = max(np.quantile(g_val, obj.p, method="hazen"), 0)
-        obj.G = l
-        return y, l, obj, 0
+        if p is not None:
+            obj.p = p
+        values = np.asarray(y).reshape(np.shape(y)[0], -1, order="F")[3, :]
+        if self.threshold_rule == "midpoint":
+            ordered = np.sort(values)
+            k = int(np.floor(len(ordered) * obj.p + 0.5))
+            if k < 1 or k >= len(ordered):
+                raise IndexError("Midpoint index outside sample size")
+            threshold = (ordered[k - 1] + ordered[k]) / 2
+        else:
+            threshold = np.quantile(values, obj.p, method="hazen")
+        if self.clip_threshold:
+            threshold = max(threshold, 0)
+        obj.G = np.array(threshold)
+        return y, obj.G, obj, 0
 
     @property
     def FlgCvg(self):
         return bool(self.G <= 0)
 
-    def EvlPf(self, inp):
-        """Failure probability as the product of the level probabilities."""
-        Nite = inp["Nite"]
-        y = inp["y"]
-        l = inp["g"]
-        z_hat = np.ones(Nite + 1)
-        for ite in range(Nite):
-            ind_H = flat(y[ite])[3, :] < l[ite + 1]    # I[g < l_{ite+1}] (Eqn. 31)
-            z_hat[ite + 1] = z_hat[ite] * np.mean(ind_H)
-        return z_hat[Nite]

@@ -28,7 +28,8 @@ from scipy.io import loadmat
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "validation"))
 
-import semis_rel as sr  # noqa: E402
+import semis_rel as sr
+from drive_SuS import estimate_pf  # noqa: E402
 from semis_rel import _utils  # noqa: E402
 from replay import ReplayRNG  # noqa: E402
 
@@ -48,13 +49,13 @@ def make_intbay(method, Tfun):
 
 def run_once(method, Tfun, nsam=1000, cov=False):
     intbay = make_intbay(method, Tfun)
-    semcs = sr.SeMIS(intbay, sr.aCS())
+    semcs = sr.SeMCS(sr.aCS(intbay))
     semcs.NumSam = nsam
     semcs.Verbose = False
     out = semcs.RunIte()
     if method == "sus":
-        return out, out["intBay"].EvlPf(out), np.nan, np.nan
-    mis = sr.MIS_Rel(out)
+        return out, estimate_pf(out), np.nan, np.nan
+    mis = sr.MIS(out)
     cv_lw, cv_up = mis.estimateCov() if cov else (np.nan, np.nan)
     return out, mis.Pf_hat, cv_lw, cv_up
 

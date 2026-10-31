@@ -90,7 +90,7 @@ class SeMIS_low_dimension:
         """log rPDF pi_i(u) (Eqn. 12)."""
         return logGauss(self.X, self.G["mu_pi"], self.G["Sigma"])
 
-    def UpdObj(self, u, y):
+    def UpdObj(self, u, y, p=None):
         """Update l_i (Eqn. 24), fit the Kriging surrogate g_hat_{i+1} (Eqn. 25) and
         set the conservative surrogate threshold l_hat (Eqn. 27).
 
@@ -101,6 +101,8 @@ class SeMIS_low_dimension:
         g_val = y2[3, :]
         u2 = flat(u)
         g = dict(obj.G)
+        if p is not None:
+            g["p"] = p
 
         l = max(np.quantile(g_val, g["p"], method="hazen"), 0)   # threshold l_i (Eqn. 24)
         ind_seed = g_val < l                                       # seed set S_{i+1}

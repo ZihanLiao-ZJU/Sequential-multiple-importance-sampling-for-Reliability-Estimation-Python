@@ -16,7 +16,6 @@ Python implementation of **Sequential Multiple Importance Sampling (SeMIS)** for
 - [Outputs](#outputs)
 - [Optional single-run CoV bounds](#optional-single-run-cov-bounds)
 - [Code-to-paper mapping](#code-to-paper-mapping)
-- [Tests](#tests)
 - [Implementation notes](#implementation-notes)
 - [Citation](#citation)
 - [License](#license)
@@ -55,7 +54,6 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 .
 ├── drive_SeMIS.py               # main driver: selected example, 100 independent runs
 ├── drive_SuS.py                # SuS experiment driver
-├── validate.py                  # recorded-reference and statistical checks
 ├── semis_rel/
 │   ├── SeMCS.py                 # sequential sampling framework (Algorithm 1)
 │   ├── SeMIS_low_dimension.py   # intermediate distributions, Kriging-based truncation (Eqn. 25)
@@ -67,7 +65,6 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 │   ├── limit_state_functions/   # built-in performance functions Ex1 ... Ex12
 │   ├── support_functions/       # sampler (aCS), MIS weights, seed selection, ...
 │   ├── operations_on_logarithmic_values/  # one .py file per MATLAB log function
-├── validation/                  # recorded fixtures used by validate.py
 ├── LICENSE
 └── README.md
 ```
@@ -187,7 +184,7 @@ The driver prints the following quantities, averaged over the independent runs:
 | `CoV (empirical)` | coefficient of variation across the independent runs |
 | `N_cal (mean)` | average number of performance-function evaluations per run |
 
-`SeMIS.RunIte()` returns a dictionary with the samples `x`, function values `y` and ISD parameters `g` of every level, the number of performance-function calls per level `Ncal` and the number of levels `Nite`. Set `semcs.Verbose = False` to silence the progress printed at every level.
+`SeMCS.RunIte()` returns a dictionary with the samples `x`, function values `y` and ISD parameters `g` of every level, the number of performance-function calls per level `Ncal` and the number of levels `Nite`. Set `semcs.Verbose = False` to silence the progress printed at every level.
 
 ## Optional single-run CoV bounds
 
@@ -207,16 +204,6 @@ cv_lw, cv_up = mis.estimateCov()   # single-run CoV bounds (Eqn. 34–58)
 | Balance-heuristic MIS estimator | `MIS` / `WgtMis_Blc` / `MisInt` | Eqn. (4)–(10), (33) |
 | CoV bounds (optional) | `MIS.estimateCov` | Eqn. (34)–(58), App. A–C |
 
-## Tests
-
-Run the unit tests and recorded-reference checks from the repository root:
-
-```bash
-python -m unittest discover -s tests -v
-python validate.py --replay
-```
-
-The replay command requires all 15 recording/result pairs in `validation/reference/`.
 
 ## Implementation notes
 
@@ -229,7 +216,7 @@ The replay command requires all 15 recording/result pairs in `validation/referen
 - Arrays use the `Ndim × Nc × Ns` layout and column-major flattening. Python indices start at 0.
 - Random draws use NumPy through `semis_rel._utils`; `np.random.seed` sets the random seed.
 - `drive_SeMIS.py` accepts command-line options and uses independent processes with `--workers`.
-- Signed-log arithmetic does not support slices containing only negative terms, including all-negative cumulative prefixes. The unit suite records this case as an expected failure.
+- Signed-log arithmetic does not support slices containing only negative terms, including all-negative cumulative prefixes.
 
 ## Citation
 

@@ -1,3 +1,4 @@
+from semcs_core import state_property
 import copy
 
 import numpy as np
@@ -10,6 +11,7 @@ from .surrogates import fitrgp, predict
 
 
 class SeMIS_low_dimension:
+    Nsam = state_property("Nsam",1000)
     """SeMIS with Nataf transformation for structural reliability problems.
 
     Low-dimensional variant: Kriging-based hybrid truncation (Eqn. 25).
@@ -35,6 +37,7 @@ class SeMIS_low_dimension:
 
         L_pi = np.eye(self.Ndim) * sigma
         self.G = {
+            "Nsam": 1000, "variance_design_beta": beta,
             "p": 0.1,            # intermediate level probability p (Section 4.1.2)
             "Ite": 0,            # current iteration counter
             "l": np.inf,         # exact PF threshold l_i (Eqn. 20)

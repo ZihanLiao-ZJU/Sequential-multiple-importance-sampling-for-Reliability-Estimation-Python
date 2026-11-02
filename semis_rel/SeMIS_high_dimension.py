@@ -1,3 +1,4 @@
+from semcs_core import state_property
 import copy
 
 import numpy as np
@@ -24,6 +25,7 @@ def _pls_predict(beta, u):
 
 
 class SeMIS_high_dimension:
+    Nsam = state_property("Nsam",1000)
     """SeMIS with Nataf transformation for structural reliability problems.
 
     High-dimensional variant: PLS-based hybrid truncation (Eqn. 26).
@@ -47,6 +49,7 @@ class SeMIS_high_dimension:
 
         L_pi = np.eye(self.Ndim) * sigma
         self.G = {
+            "Nsam": 1000, "variance_design_beta": beta,
             "p": 0.1,                              # intermediate level probability p
             "Ite": 0,                              # current iteration counter
             "l": np.inf,                           # exact PF threshold l_i (Eqn. 20)

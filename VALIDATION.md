@@ -7,15 +7,15 @@ The default aCS uses unit base scale and carries lambda between levels. The foll
 | Case | Reference probability | Mean (100 runs) | Sample SD | Mean Ncal | E | Paper E | E / paper E |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Ex1 (2D) | 3.195788e-05 | 3.302598e-05 | 7.982958e-06 | 1496.24 | 87.421 | 95.579 | 0.91465 |
-| Ex4 (3D) | 0.000313 (rounded) | 0.0003021066 | 6.399141e-05 | 1757.25 | 78.842 | 88.477 | 0.89110 |
+| Ex4 (3D) | 0.0003042914 | 0.0003021066 | 6.399141e-05 | 1757.25 | 78.842 | 88.477 | 0.89110 |
 | Ex10 (20D) | 0.001349898 | 0.001415408 | 0.0002692437 | 2937.17 | 106.28 | 139.49 | 0.76192 |
 | Ex10 (100D) | 0.001349898 | 0.001330752 | 0.0002952354 | 2989.35 | 147.14 | 145.2 | 1.01333 |
 
 These paper-versus-current differences already occur in the previous public implementation; they are not performance gains caused by sharing Engine. Three tested configurations improve this point efficiency metric; the 100D configuration is 1.33% higher, within the predeclared 10% allowance. This result supports this implementation and these settings, rather than a universal ranking of samplers.
 
-Ex4 has only a rounded paper reference in this comparison. Ex10 uses the public positively scaled form of the printed limit-state function; its failure event is the same. Paper and current sampler settings are documented separately and are not claimed to be historically identical.
+For Ex4, independent conditional Gaussian integration gives 0.00030429140759982183 (recommended numerical tolerance 2e-16, not a certified full error bound). The printed source reference 0.000313 is retained separately; it is not the rounding of this independent result. The reference correction changes no sampled estimates, SD, model calls or efficiency statistics. Ex10 uses the public positively scaled form of the printed limit-state function; its failure event is the same. Paper and current sampler settings are documented separately and are not claimed to be historically identical.
 
-The 20D mean has an unadjusted 95% mean-interval flag against the independent truth. Across 20 independently referenced responses in the full five-family validation, none of the four such flags survives Holm adjustment. The paired migration difference is exactly zero; this does not prove that the original adaptive estimator is unbiased at finite N.
+The 20D mean has an unadjusted 95% mean-interval flag against the independent truth. Across the independently referenced responses in the full five-family validation, none of the unadjusted flags survives Holm adjustment. The paired migration difference is exactly zero; this does not prove that the original adaptive estimator is unbiased at finite N.
 
 Primary cohort seeds are 2026110200–2026110299. Server numerical environment: Python 3.12.3, NumPy 2.5.4, SciPy 1.18.1, single numerical-library thread. Cross-language outputs require a separate statistical assessment.
 

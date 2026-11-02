@@ -101,3 +101,5 @@ Licensed under the [MIT License](LICENSE). The original copyright notice is reta
 ## Shared-core validation
 
 See [VALIDATION.md](VALIDATION.md) for 100-run paired migration and source-paper efficiency comparisons.
+
+Ex4 reference clarification: deterministic conditional integration gives Pf approximately 3.042914076e-4; the printed source value 3.13e-4 is retained separately. This reference check changes no benchmark formula, sampling or efficiency statistic. See [VALIDATION.md](VALIDATION.md).

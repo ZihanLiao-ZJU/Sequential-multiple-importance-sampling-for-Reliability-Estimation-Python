@@ -63,9 +63,7 @@ class Nataf:
                     d1 = self.Marg_X[i].DistributionName.lower()
                     d2 = self.Marg_X[j].DistributionName.lower()
                     rho_x = self.Rho_X[i, j]
-                    if rho_x == 0:
-                        Rho_U[i, j] = 0.0
-                    elif d1 == "normal" and d2 == "normal":
+                    if d1 == "normal" and d2 == "normal":
                         Rho_U[i, j] = rho_x
                     elif d1 == "normal" and d2 == "lognormal":
                         cv_j = self.Marg_X[j].std() / self.Marg_X[j].mean()
@@ -92,8 +90,9 @@ class Nataf:
                                 np.exp(-1 / (2 * (1 - rho_u ** 2)) *
                                        (u[:, 0] ** 2 - 2 * rho_u * u[:, 0] * u[:, 1] + u[:, 1] ** 2))))
 
-                        bounds = (-1, 0) if rho_x < 0 else (0, 1)
-                        res = minimize_scalar(rhoU2X_err, bounds=bounds, method="bounded",
+                        # Preserve the author MATLAB positive-interval inversion;
+                        # negative nonstandard correlations are not extended here.
+                        res = minimize_scalar(rhoU2X_err, bounds=(0, 1), method="bounded",
                                               options={"xatol": 1e-4})
                         Rho_U[i, j] = res.x
                     Rho_U[j, i] = Rho_U[i, j]

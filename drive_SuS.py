@@ -17,7 +17,7 @@ def estimate_pf(result, clip_threshold=True):
     return probability
 
 
-def drive_SuS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, sampler_name="aCS"):
+def drive_SuS(example="Ex1", N=1000, repeats=100, seed=0, ndim=2, sampler_name="aCS"):
     if isinstance(example, int):
         example = f"Ex{example}"
     if repeats < 1 or N < 20:
@@ -44,10 +44,10 @@ def drive_SuS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, sampler_na
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--example", default="Ex1")
-    parser.add_argument("--ndim", type=int, default=50)
+    parser.add_argument("--ndim", type=int, default=2)
     parser.add_argument("--samples", type=int, default=1000)
     parser.add_argument("--repeats", type=int, default=100)
-    parser.add_argument("--seed", type=int, default=2026)
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--sampler", choices=["CW_aMH", "aCS", "HMC", "ES"], default="aCS")
     args = parser.parse_args()
     results = drive_SuS(args.example, args.samples, args.repeats, args.seed, args.ndim, args.sampler)

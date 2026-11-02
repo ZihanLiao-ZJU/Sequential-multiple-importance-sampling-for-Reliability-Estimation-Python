@@ -9,7 +9,7 @@ estimates the failure probability P_hat_f (Eqn. 9-10, 33).
     python drive_SeMIS.py --cov                  # also the single-run CoV bounds (Eqn. 34-58)
     python drive_SeMIS.py --workers 4            # independent runs in parallel processes
 
-The MATLAB driver runs in a parfor loop; here --workers > 1 uses a process pool.
+The MATLAB driver is serial; here --workers > 1 uses a process pool.
 """
 import argparse
 from concurrent.futures import ProcessPoolExecutor
@@ -24,7 +24,7 @@ from semis_rel import (PF_REF, MIS, SeMCS, SeMIS_high_dimension, SeMIS_low_dimen
 HIGH_DIM = ("Ex10", "Ex11", "Ex12")
 
 
-def build(example, ndim=50, N=1000, sampler_name="aCS"):
+def build(example, ndim=2, N=1000, sampler_name="aCS"):
     # -------- Custom example ------------------------------------------------
     # Low-dimensional examples (paper Table 1, n < 20):
     #   Ex1   piecewise-linear (2D),       Pf_ref = 3.20e-5
@@ -66,7 +66,7 @@ def one_run(args):
     return mis.Pf_hat, np.sum(out_semcs["Ncal"]), cv_lw, cv_up
 
 
-def drive_SeMIS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, cov=False, sampler_name="aCS"):
+def drive_SeMIS(example="Ex1", N=1000, repeats=100, seed=0, ndim=2, cov=False, sampler_name="aCS"):
     """Run independent repeats, retaining every outcome and evaluation count."""
     if isinstance(example, int):
         example = f"Ex{example}"
@@ -94,12 +94,12 @@ def drive_SeMIS(example="Ex1", N=1000, repeats=100, seed=2026, ndim=50, cov=Fals
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--example", default="Ex1", help="Ex1 ... Ex12 (default Ex1)")
-    parser.add_argument("--ndim", type=int, default=50, help="dimension of Ex10-Ex12 (default 50)")
+    parser.add_argument("--ndim", type=int, default=2, help="dimension of Ex10-Ex12 (default 2)")
     parser.add_argument("--repeats", "--nrun", dest="nrun", type=int, default=100, help="number of independent runs (default 100)")
     parser.add_argument("--samples", type=int, default=1000)
     parser.add_argument("--cov", action="store_true", help="estimate the single-run CoV bounds")
     parser.add_argument("--workers", type=int, default=1, help="parallel worker processes (default 1)")
-    parser.add_argument("--seed", type=int, default=2026, help="base random seed; run i uses seed + i")
+    parser.add_argument("--seed", type=int, default=0, help="base random seed; run i uses seed + i")
     parser.add_argument("--sampler", choices=["CW_aMH", "aCS", "HMC", "ES"], default="aCS")
     args = parser.parse_args()
 

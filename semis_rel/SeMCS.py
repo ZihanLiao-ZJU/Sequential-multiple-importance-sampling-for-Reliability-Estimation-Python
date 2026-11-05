@@ -2,22 +2,11 @@
 
 Methods implement start/sample/advance/select_seeds/is_complete/finish.
 The engine never identifies an algorithm, changes its probability law, or draws
-random numbers. Frozen level records describe the distribution actually sampled.
+random numbers.
 """
 import copy
-from types import MappingProxyType
 import numpy as np
 
-def frozen(value):
-    if isinstance(value, np.ndarray):
-        value = value.copy()
-        value.setflags(write=False)
-        return value
-    if isinstance(value, dict):
-        return MappingProxyType({k: frozen(v) for k,v in value.items()})
-    if isinstance(value, (list,tuple)):
-        return tuple(frozen(v) for v in value)
-    return copy.deepcopy(value)
 
 def state_property(name, default=None):
     """Compatibility attribute backed solely by the method's G mapping."""
@@ -49,10 +38,6 @@ def prescribed_state(current, specified, *, initial=False):
 
 class Method:
     """Policy protocol: algorithm-specific methods live with their repository."""
-    def snapshot(self, context, record):
-        return frozen(dict(G=context["model"].G, x=record["x"], y=record["y"],
-                           Ncal=record["calls"], Nsam=record["count"],
-                           chain_shape=record["shape"]))
     def is_complete(self, context, record, phase): return False
 
 class Engine:
@@ -60,19 +45,13 @@ class Engine:
     def run(self, owner, rng=None):
         method=self.method
         context=method.start(owner,rng)
-        levels=[]
         for level in range(context["limit"]):
             record=method.sample(context,level)
-            # Capture sampler adaptation as part of the sampled method state.
-            levels.append(method.snapshot(context,record))
             method.advance(context,record,level)
             if method.is_complete(context,record,"before_seeds"): break
             method.select_seeds(context,record,level)
             if method.is_complete(context,record,"after_seeds"): break
-        output=method.finish(context)
-        output["levels"]=tuple(levels)
-        output["engine"]="semcs_core.Engine"
-        return output
+        return method.finish(context)
 
 class LegacyFacade:
     """Old constructors/properties without a private sequential run loop."""
@@ -118,8 +97,6 @@ class LegacyFacade:
 
 
 """Method-specific sequential policies preserving the source random order."""
-import copy
-import numpy as np
 from .support_functions.SedSlt import SedSlt
 
 class ReliabilityMethod(Method):

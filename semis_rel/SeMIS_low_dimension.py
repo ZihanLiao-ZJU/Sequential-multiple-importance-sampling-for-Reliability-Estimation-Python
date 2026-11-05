@@ -172,31 +172,9 @@ class SeMIS_low_dimension:
             complete=False,
         )
 
-    def sample_level(self, context, level):
-        if level == 0:
-            x, y, calls, model = context["sampler"].SamGen(context["nc"], context["steps"])
-        else:
-            x, y, calls, model = context["sampler"].SamGen(
-                context["xseed"], context["yseed"], context["steps"]
-            )
-
-        context["model"] = model
-        record = dict(
-            x=x,
-            y=y,
-            calls=calls,
-            count=context["nc"] * context["steps"],
-            shape=(context["nc"], context["steps"]),
-        )
-        context["x"].append(x)
-        context["y"].append(y)
-        context["Nsam"].append(record["count"])
-        context["Nsze"].append(record["shape"])
-        context["Ncal"].append(calls)
-        context["sigma"].append(getattr(context["sampler"], "sigma", None))
-        return record
-
     def advance_level(self, context, record, level):
+        context["sigma"].append(getattr(context["sampler"], "sigma", None))
+
         model = context["model"]
         if level + 1 < len(context["owner"].G):
             model = copy.copy(model)

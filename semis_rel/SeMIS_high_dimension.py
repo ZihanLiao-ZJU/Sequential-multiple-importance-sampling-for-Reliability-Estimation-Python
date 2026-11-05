@@ -1,4 +1,4 @@
-from semcs_core import state_property
+from .SeMCS import state_property
 import copy
 
 import numpy as np

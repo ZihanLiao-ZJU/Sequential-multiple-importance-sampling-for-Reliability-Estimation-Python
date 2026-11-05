@@ -16,7 +16,6 @@ Python implementation of **Sequential Multiple Importance Sampling (SeMIS)** for
 - [Outputs](#outputs)
 - [Optional single-run CoV bounds](#optional-single-run-cov-bounds)
 - [Code-to-paper mapping](#code-to-paper-mapping)
-- [Validation against MATLAB](#validation-against-matlab)
 - [Differences from the MATLAB version](#differences-from-the-matlab-version)
 - [Citation](#citation)
 - [License](#license)
@@ -51,24 +50,62 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 
 ## Repository structure
 
-```
-.
-├── drive_SeMIS.py               # main driver: selected example, 100 independent runs
-├── validate.py                  # comparison with the MATLAB implementation
-├── semis_rel/
-│   ├── SeMCS.py                 # sequential sampling framework (Algorithm 1)
-│   ├── SeMIS_low_dimension.py   # intermediate distributions, Kriging-based truncation (Eqn. 25)
-│   ├── SeMIS_high_dimension.py  # intermediate distributions, PLS-based truncation (Eqn. 26)
-│   ├── MIS.py               # MIS estimator and optional single-run CoV bounds (Eqn. 34–58)
-│   ├── SuS.py                   # subset simulation, used as a comparison baseline
-│   ├── surrogates.py            # Gaussian process regression (fitrgp/predict) and PLS regression (plsregress)
-│   ├── Nataf.py, distributions.py
-│   ├── limit_state_functions/   # built-in performance functions Ex1 ... Ex12
-│   ├── support_functions/       # sampler (aCS), MIS weights, seed selection, ...
-│   └── log_operations.py        # log-domain arithmetic (logsum, logplus, logmean, ...)
-├── validation/                  # MATLAB random streams and results used by validate.py
+```text
 ├── LICENSE
-└── README.md
+├── README.md
+├── drive_SeMIS.py
+├── requirements.txt
+└── semis_rel/
+    ├── MIS.py
+    ├── Nataf.py
+    ├── SeMCS.py
+    ├── SeMIS_high_dimension.py
+    ├── SeMIS_low_dimension.py
+    ├── SuS.py
+    ├── __init__.py
+    ├── _utils.py
+    ├── distributions.py
+    ├── limit_state_functions/
+    │   ├── Ex1.py
+    │   ├── Ex10.py
+    │   ├── Ex11.py
+    │   ├── Ex12.py
+    │   ├── Ex2.py
+    │   ├── Ex3.py
+    │   ├── Ex4.py
+    │   ├── Ex5.py
+    │   ├── Ex6.py
+    │   ├── Ex7.py
+    │   ├── Ex8.py
+    │   ├── Ex9.py
+    │   ├── __init__.py
+    │   └── _plot.py
+    ├── log_operations.py
+    ├── mcmc_samplers/
+    │   ├── CW_aMH.py
+    │   ├── ES.py
+    │   ├── HMC.py
+    │   ├── LICENSE
+    │   ├── MCMCBase.py
+    │   ├── __init__.py
+    │   └── aCS.py
+    ├── operations_on_logarithmic_values/
+    │   └── __init__.py
+    ├── support_functions/
+    │   ├── DspRst.py
+    │   ├── MisInt.py
+    │   ├── MoveBlock.py
+    │   ├── ResRat.py
+    │   ├── SamGen.py
+    │   ├── SedSlt.py
+    │   ├── U2X.py
+    │   ├── UpdY.py
+    │   ├── VabSrk.py
+    │   ├── WgtMis_Blc.py
+    │   ├── __init__.py
+    │   ├── aCS.py
+    │   └── logGauss.py
+    └── surrogates.py
 ```
 
 ## Quick start
@@ -176,58 +213,7 @@ cv_lw, cv_up = mis.estimateCov()   # single-run CoV bounds (Eqn. 34–58)
 | Balance-heuristic MIS estimator | `MIS` / `WgtMis_Blc` / `MisInt` | Eqn. (4)–(10), (33) |
 | CoV bounds (optional) | `MIS.estimateCov` | Eqn. (34)–(58), App. A–C |
 
-## Validation against MATLAB
-
-```bash
-python validate.py
-```
-
-1. **Reference replay (Octave, not native MATLAB).** `validation/reference/` contains recorded random draws and results from the MATLAB-source implementation running under GNU Octave 8.4 with compatibility shims, for PLS-based SeMIS on `Ex10`–`Ex12` (n = 50, two seeds each) and SuS on `Ex1`–`Ex9`. `validate.py` compares levels, thresholds, performance-function calls, failure probability, single-run CoV bounds and final samples. Every one of the 15 expected recording/result pairs is required: missing or empty files, NaNs and mismatched infinities fail validation. This is a reference replay, **not native MATLAB dynamic-equivalence testing**. Recorded `randsample` indices do not independently validate the weights passed to resampling; equal NumPy/MATLAB seeds also do not imply equal random streams.
-2. **Statistics.** Independent Python runs of SeMIS per example (`--nrun`, default 20; `--examples` to choose); the mean failure probability is compared with the reference value of the paper.
-
-Previously recorded replay results (`python validate.py --replay`; rerun locally to verify your environment):
-
-| Method | Cases | Replay vs Octave reference |
-|---|---|---|
-| SeMIS, PLS-based truncation | `Ex10`, `Ex11`, `Ex12` (n = 50), seeds 1 and 2 | identical (levels, thresholds, N_cal, P_hat_f, CoV bounds, samples) |
-| SuS baseline | `Ex1` … `Ex9` | identical (levels, thresholds, N_cal, P_hat_f, samples) |
-
-Previously reported statistics of 20 independent Python SeMIS runs per example (N = 1000 per level; Kriging-based truncation for `Ex1`–`Ex9`, PLS-based for `Ex10`–`Ex12`):
-
-| Example | Mean P_hat_f | Pf_ref | Mean / Pf_ref | Empirical CoV | Estimated CoV bounds (mean) | N_cal (mean) |
-|---|---|---|---|---|---|---|
-| `Ex1` | 3.58e-5 | 3.20e-5 | 1.12 | 0.19 | [0.25, 0.28] | 1498 |
-| `Ex2` | 1.22e-5 | 1.13e-5 | 1.08 | 0.28 | [0.25, 0.29] | 1425 |
-| `Ex3` | 3.09e-5 | 3.23e-5 | 0.96 | 0.22 | [0.19, 0.22] | 1491 |
-| `Ex4` | 3.08e-4 | 3.13e-4 | 0.99 | 0.23 | [0.22, 0.30] | 1690 |
-| `Ex5` | 2.25e-4 | 2.13e-4 | 1.06 | 0.29 | [0.24, 0.33] | 2091 |
-| `Ex6` | 2.39e-4 | 2.370e-4 | 1.01 | 0.18 | [0.20, 0.26] | 1699 |
-| `Ex7` | 5.42e-4 | 5.29e-4 | 1.03 | 0.21 | [0.20, 0.25] | 1535 |
-| `Ex8` | 3.09e-3 | 3.20e-3 | 0.97 | 0.20 | [0.18, 0.21] | 1490 |
-| `Ex9` | 3.68e-7 | 3.78e-7 | 0.97 | 0.36 | [0.34, 0.68] | 2930 |
-| `Ex10(50)` | 1.40e-3 | 1.35e-3 | 1.04 | 0.15 | [0.20, 0.29] | 2975 |
-| `Ex11(50)` | 4.59e-6 | 4.75e-6 | 0.97 | 0.45 | [0.37, 0.79] | 5299 |
-| `Ex12(50)` | 1.90e-3 | 1.91e-3 | 1.00 | 0.15 | [0.18, 0.26] | 2979 |
-
-All means are within 3 standard errors of the reference value (`Ex1`: 2.6, all others below 1.2).
-
-The Kriging-based variant cannot be replayed exactly: MATLAB's `fitrgp` estimates the hyperparameters with its own optimizer, and the Python Gaussian process (same model: ARD squared exponential kernel, constant basis, standardized predictors, exact fit and prediction, noise standard deviation bounded below by 1e-2·std(y)) reaches slightly different hyperparameters. The Python optimizer uses bounded L-BFGS-B rather than MATLAB's default `fitrgp` optimizer, so the model specification is similar but optimizer behavior is not `fitrgp` parity. Statistical comparisons with the paper's reference probabilities do not establish native MATLAB equivalence.
-
-The reference streams were recorded by running the original MATLAB code under GNU Octave 8.4 (no MATLAB licence was available) with the scripts in `validation/matlab/`: they shadow `randn`, `rand`, `randperm`, `randi` and `randsample` to log every draw, and `validation/matlab/octave/` provides Octave stand-ins for `makedist`, `pagemtimes` and the `"all"` option of `max`, `min` and `sum`. Octave compares complex numbers by their modulus, so for the recording the sign tests in `logsum`, `logplus` and `logminus` were applied to `real(...)`, which is what MATLAB compares, and the empty array that `Ex7` and `Ex9` grow their marginals from was created as `struct([])`. MATLAB does not need any of these changes. To record them with MATLAB instead (this also allows `'low'`, which needs `fitrgp`):
-
-```matlab
->> cd validation/matlab
->> record_reference('/path/to/Sequential-multiple-importance-sampling-for-Reliability-Estimation', 'high', 'Ex10', 50, 1, '../reference')
-```
-
-### Regression tests and known limitations
-
-```bash
-python -m unittest discover -s tests -v
-python validate.py --replay
-```
-
-The unit suite covers frozen SciPy distribution wrappers, signed `logcumsum` output storage, positive/negative Nataf correlations, multi-performance SuS output shapes, fail-closed validation and each available reference recording. Reference tests explicitly skip missing local fixtures; the standalone validator instead fails unless **all 15** cases are present. The suite retains one expected failure documenting an inherited `logsum` limitation: an all-negative signed-log slice (including a negative first cumulative prefix) returns `-inf`. Complex-buffer preservation fixes mixed-sign cumulative results but does not repair that upstream signed-arithmetic algorithm. No native MATLAB runtime was used for these regression tests.
+Signed-log arithmetic retains an inherited limitation: an all-negative signed-log slice, including a negative first cumulative prefix, is not handled correctly by `logsum`. Preserving complex `logcumsum` outputs retains mixed-sign prefixes but does not change that reduction algorithm.
 
 ## Differences from the MATLAB version
 
@@ -235,8 +221,8 @@ The unit suite covers frozen SciPy distribution wrappers, signed `logcumsum` out
 - Numerical Nataf correlation inversion now searches a negative interval for negative target correlations and preserves exact zero pairs. This deliberately repairs an inherited positive-only interval, rather than claiming bit-for-bit source parity for those inputs.
 - `SuS.EvlY` preserves `(Nfun, Nsam)` multi-performance matrices. The first performance function still determines SuS thresholds, as in MATLAB; `MIS` can estimate the retained functions separately.
 
-- `fitrgp`/`predict` and `plsregress` of the Statistics and Machine Learning Toolbox are replaced by `semis_rel/surrogates.py`. `plsregress` gives the same coefficients as MATLAB's SIMPLS algorithm; for `fitrgp`, see [Validation against MATLAB](#validation-against-matlab).
-- The Kriging predictions are computed one query point at a time, in buffers with a fixed memory alignment, so the prediction at a sample is bit-for-bit the same whichever other samples are predicted with it. The screening `g_hat <= l_hat` compares predictions from different calls with `l_hat`, the maximum over the seeds; when the seed attaining the maximum lost this comparison by round-off (a difference of about 1e-14), its chain started outside the support of the ISD, the normalizing constant became NaN and the run returned P_hat_f = 0. With batched predictions, this happened in 1 to 8 of 20 runs for each of `Ex4`–`Ex7` and `Ex9`. The MATLAB code compares predictions in the same way, so it may be exposed to the same round-off effect.
+- `fitrgp`/`predict` and `plsregress` of the Statistics and Machine Learning Toolbox are replaced by `semis_rel/surrogates.py`. The PLS implementation follows SIMPLS. The Gaussian process uses an ARD squared exponential kernel, constant basis, standardized predictors, exact fit and prediction, and noise standard deviation bounded below by 1e-2·std(y). Its bounded L-BFGS-B optimizer differs from MATLAB's default `fitrgp` optimizer and can yield different hyperparameters.
+- The Kriging predictions are computed one query point at a time, in buffers with a fixed memory alignment, so the prediction at a sample does not depend on the surrounding query batch. This matters when `g_hat <= l_hat` compares predictions from separate calls at a selected seed attaining the maximum: round-off can otherwise place that seed outside the ISD support.
 - `RunIte` returns a dictionary instead of a struct, and the ISD parameters `G` of the Kriging and PLS variants are dictionaries.
 - Arrays keep the MATLAB layout (`Ndim × Nc × Ns`, flattened in column-major order); Python indices start at 0.
 - Random numbers are drawn through `semis_rel._utils` (`randn`, `rand`, `randperm`, `randi`, `randsample`), backed by NumPy; `np.random.seed` fixes a run.

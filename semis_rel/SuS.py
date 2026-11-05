@@ -5,7 +5,7 @@ class does not run iterations; SeMCS owns sampling and stopping.
 Both coordinate selectors store Gaussian u; they choose PF.Dist or PF.Rdis
 to map u to physical performance-function inputs.
 """
-from semcs_core import state_property
+from .SeMCS import state_property
 import copy
 import numpy as np
 

@@ -1,3 +1,4 @@
-"""Compatibility import; canonical implementation is semcs_core."""
-from semcs_core.aCS import aCS
+"""Compatibility import for the original reliability API."""
+from ..mcmc_samplers.aCS import aCS
+
 __all__ = ["aCS"]

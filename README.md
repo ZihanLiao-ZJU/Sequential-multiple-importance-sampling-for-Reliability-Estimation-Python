@@ -80,7 +80,6 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
     │   ├── Ex9.py
     │   ├── __init__.py
     │   └── _plot.py
-    ├── log_operations.py
     ├── mcmc_samplers/
     │   ├── CW_aMH.py
     │   ├── ES.py
@@ -92,18 +91,13 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
     ├── operations_on_logarithmic_values/
     │   └── __init__.py
     ├── support_functions/
-    │   ├── DspRst.py
     │   ├── MisInt.py
     │   ├── MoveBlock.py
     │   ├── ResRat.py
-    │   ├── SamGen.py
     │   ├── SedSlt.py
-    │   ├── U2X.py
     │   ├── UpdY.py
-    │   ├── VabSrk.py
     │   ├── WgtMis_Blc.py
     │   ├── __init__.py
-    │   ├── aCS.py
     │   └── logGauss.py
     └── surrogates.py
 ```
@@ -208,7 +202,7 @@ cv_lw, cv_up = mis.estimateCov()   # single-run CoV bounds (Eqn. 34–58)
 | Step | Code | Paper |
 |---|---|---|
 | Sequence of intermediate distributions | `SeMCS.RunIte` / `UpdObj` | Eqn. (11)–(21), (24)–(27) |
-| pCN-MCMC sampling with adaptive step | `support_functions/aCS.py` | Eqn. (22)–(23), Algorithm 2 |
+| pCN-MCMC sampling with adaptive step | `mcmc_samplers/aCS.py` | Eqn. (22)–(23), Algorithm 2 |
 | Normalizing constants of the ISDs | `MIS.normalizeY` | Eqn. (28)–(32) |
 | Balance-heuristic MIS estimator | `MIS` / `WgtMis_Blc` / `MisInt` | Eqn. (4)–(10), (33) |
 | CoV bounds (optional) | `MIS.estimateCov` | Eqn. (34)–(58), App. A–C |

@@ -5,7 +5,6 @@ import numpy as np
 from scipy.stats import norm
 
 from ._utils import flat
-from .support_functions.U2X import U2X
 from .support_functions.logGauss import logGauss
 from .surrogates import plsregress
 
@@ -77,7 +76,7 @@ class SeMIS_high_dimension:
         g_val = np.full(n_sam, np.inf)
         n_cal = 0
         if np.any(ind_scr):
-            x = U2X(obj, u[:, ind_scr])
+            x = obj.TF.Dist.U2X(u[:, ind_scr])
             g_val[ind_scr] = np.asarray(obj.TF.EvlLSF(x), dtype=float).ravel()
             n_cal = int(np.sum(ind_scr))
         obj.Y = np.vstack([log_phi, g_val])

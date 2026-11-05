@@ -69,8 +69,8 @@ class ReliabilityMethod(Method):
 
 from semcs_core import LegacyFacade
 
-class SeMIS(LegacyFacade):
-    """Original two-argument entry point using the shared sequential engine.
+class SeMCS(LegacyFacade):
+    """Sequential Monte Carlo framework using the shared engine.
 
     A bound sampler can also be passed alone, preserving the unified entry API.
     """
@@ -83,5 +83,3 @@ class SeMIS(LegacyFacade):
             Sampler.BayStc = IntBay
         super().__init__(Sampler, ReliabilityMethod())
 
-# Compatibility for the unified one-argument public entry point.
-SeMCS = SeMIS

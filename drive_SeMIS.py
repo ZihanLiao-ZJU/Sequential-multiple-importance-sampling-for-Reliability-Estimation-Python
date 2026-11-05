@@ -1,7 +1,7 @@
 """SeMIS driver.
 
 Python port of drive_SeMIS.m: runs Sequential Multiple Importance Sampling
-(SeMCS) on a selected performance-function example with independent runs and
+(SeMIS) on a selected performance-function example with independent runs and
 estimates the failure probability P_hat_f (Eqn. 9-10, 33).
 
     python drive_SeMIS.py                        # Example 1, 100 runs (as in MATLAB)

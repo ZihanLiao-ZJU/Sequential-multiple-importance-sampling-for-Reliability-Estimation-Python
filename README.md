@@ -56,10 +56,10 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 ├── drive_SeMIS.py               # main driver: selected example, 100 independent runs
 ├── validate.py                  # comparison with the MATLAB implementation
 ├── semis_rel/
-│   ├── SeMIS.py                 # sequential sampling framework (Algorithm 1)
+│   ├── SeMCS.py                 # sequential sampling framework (Algorithm 1)
 │   ├── SeMIS_low_dimension.py   # intermediate distributions, Kriging-based truncation (Eqn. 25)
 │   ├── SeMIS_high_dimension.py  # intermediate distributions, PLS-based truncation (Eqn. 26)
-│   ├── MIS_Rel.py               # MIS estimator and optional single-run CoV bounds (Eqn. 34–58)
+│   ├── MIS.py               # MIS estimator and optional single-run CoV bounds (Eqn. 34–58)
 │   ├── SuS.py                   # subset simulation, used as a comparison baseline
 │   ├── surrogates.py            # Gaussian process regression (fitrgp/predict) and PLS regression (plsregress)
 │   ├── Nataf.py, distributions.py
@@ -84,15 +84,15 @@ By default this runs Example 1 (`Ex1`) with 100 independent runs and prints the 
 The same steps from Python code:
 
 ```python
-from semis_rel import Ex1, SeMIS_low_dimension, SeMIS, aCS, MIS_Rel
+from semis_rel import Ex1, SeMIS_low_dimension, SeMCS, aCS, MIS
 
 Tfun = Ex1()
 IntBay = SeMIS_low_dimension(Tfun)     # SeMIS_high_dimension(Tfun) for n >= 20
-semcs = SeMIS(IntBay, aCS())
+semcs = SeMCS(IntBay, aCS())
 semcs.NumSam = 1000                    # sample size per level (N)
 
 out_semcs = semcs.RunIte()             # sequential sampling (Algorithm 1)
-mis = MIS_Rel(out_semcs)               # MIS estimator (Eqn. 9-10, 33)
+mis = MIS(out_semcs)               # MIS estimator (Eqn. 9-10, 33)
 print(mis.Pf_hat, out_semcs["Ncal"].sum())
 cv_lw, cv_up = mis.estimateCov()       # optional single-run CoV bounds (Eqn. 34-58)
 ```
@@ -124,7 +124,7 @@ The driver uses `SeMIS_high_dimension` (PLS-based truncation) for n ≥ 20, i.e.
 2. Define:
    - `Dist`: probabilistic model of the input vector `X`, a `Nataf` object built from a list of marginal distributions (`makedist`) and their correlation matrix;
    - `Ndim`, `Nfun`: input dimension and number of performance functions;
-   - `EvlLSF(self, x)`: evaluates the performance function on the samples `x` (`Ndim × Nsam`, in the physical space given by `Dist`), where `g < 0` is the failure domain; for a single performance function, return a vector of length `Nsam` (SuS accepts either a row or column vector). `SuS` additionally accepts an `(Nfun, Nsam)` matrix, one performance function per row; its first row controls the sampling thresholds, while `MIS_Rel` retains all rows for estimation.
+   - `EvlLSF(self, x)`: evaluates the performance function on the samples `x` (`Ndim × Nsam`, in the physical space given by `Dist`), where `g < 0` is the failure domain; for a single performance function, return a vector of length `Nsam` (SuS accepts either a row or column vector). `SuS` additionally accepts an `(Nfun, Nsam)` matrix, one performance function per row; its first row controls the sampling thresholds, while `MIS` retains all rows for estimation.
 3. Run SeMIS with `IntBay = SeMIS_low_dimension(MyProblem())` for n < 20 or `IntBay = SeMIS_high_dimension(MyProblem())` for n ≥ 20, as in the Python example above.
 
 Minimal example: a linear limit state in two standard normal variables, with `Pf = Φ(−3.5)`.
@@ -156,7 +156,7 @@ The driver prints the following quantities, averaged over the independent runs:
 | `CoV (empirical)` | coefficient of variation across the independent runs |
 | `N_cal (mean)` | average number of performance-function evaluations per run |
 
-`SeMIS.RunIte()` returns a dictionary with the samples `x`, function values `y` and ISD parameters `g` of every level, the number of performance-function calls per level `Ncal` and the number of levels `Nite`. Set `semcs.Verbose = False` to silence the progress printed at every level.
+`SeMCS.RunIte()` returns a dictionary with the samples `x`, function values `y` and ISD parameters `g` of every level, the number of performance-function calls per level `Ncal` and the number of levels `Nite`. Set `semcs.Verbose = False` to silence the progress printed at every level.
 
 ## Optional single-run CoV bounds
 
@@ -170,11 +170,11 @@ cv_lw, cv_up = mis.estimateCov()   # single-run CoV bounds (Eqn. 34–58)
 
 | Step | Code | Paper |
 |---|---|---|
-| Sequence of intermediate distributions | `SeMIS.RunIte` / `UpdObj` | Eqn. (11)–(21), (24)–(27) |
+| Sequence of intermediate distributions | `SeMCS.RunIte` / `UpdObj` | Eqn. (11)–(21), (24)–(27) |
 | pCN-MCMC sampling with adaptive step | `support_functions/aCS.py` | Eqn. (22)–(23), Algorithm 2 |
-| Normalizing constants of the ISDs | `MIS_Rel.normalizeY` | Eqn. (28)–(32) |
-| Balance-heuristic MIS estimator | `MIS_Rel` / `WgtMis_Blc` / `MisInt` | Eqn. (4)–(10), (33) |
-| CoV bounds (optional) | `MIS_Rel.estimateCov` | Eqn. (34)–(58), App. A–C |
+| Normalizing constants of the ISDs | `MIS.normalizeY` | Eqn. (28)–(32) |
+| Balance-heuristic MIS estimator | `MIS` / `WgtMis_Blc` / `MisInt` | Eqn. (4)–(10), (33) |
+| CoV bounds (optional) | `MIS.estimateCov` | Eqn. (34)–(58), App. A–C |
 
 ## Validation against MATLAB
 
@@ -233,7 +233,7 @@ The unit suite covers frozen SciPy distribution wrappers, signed `logcumsum` out
 
 - Frozen `Distribution(name, scipy_frozen)` wrappers use their inverse CDF when explicit `mu`/`sigma`/`k` attributes are absent; `makedist` parameterized fast paths are retained.
 - Numerical Nataf correlation inversion now searches a negative interval for negative target correlations and preserves exact zero pairs. This deliberately repairs an inherited positive-only interval, rather than claiming bit-for-bit source parity for those inputs.
-- `SuS.EvlY` preserves `(Nfun, Nsam)` multi-performance matrices. The first performance function still determines SuS thresholds, as in MATLAB; `MIS_Rel` can estimate the retained functions separately.
+- `SuS.EvlY` preserves `(Nfun, Nsam)` multi-performance matrices. The first performance function still determines SuS thresholds, as in MATLAB; `MIS` can estimate the retained functions separately.
 
 - `fitrgp`/`predict` and `plsregress` of the Statistics and Machine Learning Toolbox are replaced by `semis_rel/surrogates.py`. `plsregress` gives the same coefficients as MATLAB's SIMPLS algorithm; for `fitrgp`, see [Validation against MATLAB](#validation-against-matlab).
 - The Kriging predictions are computed one query point at a time, in buffers with a fixed memory alignment, so the prediction at a sample is bit-for-bit the same whichever other samples are predicted with it. The screening `g_hat <= l_hat` compares predictions from different calls with `l_hat`, the maximum over the seeds; when the seed attaining the maximum lost this comparison by round-off (a difference of about 1e-14), its chain started outside the support of the ISD, the normalizing constant became NaN and the run returned P_hat_f = 0. With batched predictions, this happened in 1 to 8 of 20 runs for each of `Ex4`–`Ex7` and `Ex9`. The MATLAB code compares predictions in the same way, so it may be exposed to the same round-off effect.

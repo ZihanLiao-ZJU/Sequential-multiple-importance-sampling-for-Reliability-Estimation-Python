@@ -93,69 +93,118 @@ class SuS:
     def run_defaults(self):
         return dict(Verbose=False)
 
-    def start_run(self,owner,sampler):
-        owner.IntBay.G=dict(owner.IntBay.G,p=owner.ConPrb)
-        counts=np.atleast_1d(owner.NumSam).astype(int)
-        if np.any(counts<1) or owner.MaxIte<2:
+    def start_run(self, owner, sampler):
+        owner.IntBay.G = dict(owner.IntBay.G, p=owner.ConPrb)
+        counts = np.atleast_1d(owner.NumSam).astype(int)
+        if np.any(counts < 1) or owner.MaxIte < 2:
             raise ValueError("NumSam must be positive and MaxIte at least 2")
-        model=copy.copy(owner.IntBay)
+        model = copy.copy(owner.IntBay)
         if len(owner.G):
-            specified=copy.deepcopy(owner.G[0])
-            initial_mapping=isinstance(specified,dict)
-            if not isinstance(specified,dict): specified=dict(parameters=specified)
-            model.G=prescribed_state(model.G,specified,initial=initial_mapping)
-        sampler=copy.copy(sampler);sampler.BayStc=model
-        return dict(owner=owner,model=model,sampler=sampler,limit=owner.MaxIte-1,
-                    counts=counts,nc=int(counts[0]),steps=1,xseed=None,yseed=None,
-                    x=[],y=[],g=[copy.deepcopy(model.G)],Nsam=[],Nsze=[],Ncal=[],
-                    selected=[],sigma=[],complete=False)
+            specified = copy.deepcopy(owner.G[0])
+            initial_mapping = isinstance(specified, dict)
+            if not isinstance(specified, dict):
+                specified = dict(parameters=specified)
+            model.G = prescribed_state(model.G, specified, initial=initial_mapping)
+        sampler = copy.copy(sampler)
+        sampler.BayStc = model
+        return dict(
+            owner=owner,
+            model=model,
+            sampler=sampler,
+            limit=owner.MaxIte - 1,
+            counts=counts,
+            nc=int(counts[0]),
+            steps=1,
+            xseed=None,
+            yseed=None,
+            x=[],
+            y=[],
+            g=[copy.deepcopy(model.G)],
+            Nsam=[],
+            Nsze=[],
+            Ncal=[],
+            selected=[],
+            sigma=[],
+            complete=False,
+        )
 
-    def sample_level(self,c,level):
-        if level==0: x,y,calls,model=c["sampler"].SamGen(c["nc"],c["steps"])
-        else: x,y,calls,model=c["sampler"].SamGen(c["xseed"],c["yseed"],c["steps"])
-    
-        c["model"]=model
-        r=dict(x=x,y=y,calls=calls,count=c["nc"]*c["steps"],shape=(c["nc"],c["steps"]))
-        c["x"].append(x);c["y"].append(y);c["Nsam"].append(r["count"])
-        c["Nsze"].append(r["shape"]);c["Ncal"].append(calls)
-        c["sigma"].append(getattr(c["sampler"],"sigma",None))
-        return r
-
-    def advance_level(self,c,r,level):
-        model=c["model"]
-        if level+1<len(c["owner"].G):
-            model=copy.copy(model); previous=model.G
-            specified=copy.deepcopy(c["owner"].G[level+1])
-            if not isinstance(specified,dict): specified=dict(parameters=specified)
-            model.G=prescribed_state(previous,specified)
+    def sample_level(self, context, level):
+        if level == 0:
+            x, y, calls, model = context["sampler"].SamGen(context["nc"], context["steps"])
         else:
-            y,_,model,extra=model.UpdObj(r["x"],r["y"],c["owner"].ConPrb)
-            c["y"][-1]=y;r["y"]=y;c["Ncal"][-1]+=extra
-        c["model"]=model;c["sampler"].BayStc=model
-        c["g"].append(copy.deepcopy(model.G))
+            x, y, calls, model = context["sampler"].SamGen(
+                context["xseed"], context["yseed"], context["steps"]
+            )
 
-    def select_run_seeds(self,c,r,level):
-        counts=c["counts"]
-        if counts.size>1 and level+1>=counts.size:
+        context["model"] = model
+        record = dict(
+            x=x,
+            y=y,
+            calls=calls,
+            count=context["nc"] * context["steps"],
+            shape=(context["nc"], context["steps"]),
+        )
+        context["x"].append(x)
+        context["y"].append(y)
+        context["Nsam"].append(record["count"])
+        context["Nsze"].append(record["shape"])
+        context["Ncal"].append(calls)
+        context["sigma"].append(getattr(context["sampler"], "sigma", None))
+        return record
+
+    def advance_level(self, context, record, level):
+        model = context["model"]
+        if level + 1 < len(context["owner"].G):
+            model = copy.copy(model)
+            previous = model.G
+            specified = copy.deepcopy(context["owner"].G[level + 1])
+            if not isinstance(specified, dict):
+                specified = dict(parameters=specified)
+            model.G = prescribed_state(previous, specified)
+        else:
+            y, _, model, extra = model.UpdObj(record["x"], record["y"], context["owner"].ConPrb)
+            context["y"][-1] = y
+            record["y"] = y
+            context["Ncal"][-1] += extra
+        context["model"] = model
+        context["sampler"].BayStc = model
+        context["g"].append(copy.deepcopy(model.G))
+
+    def select_run_seeds(self, context, record, level):
+        counts = context["counts"]
+        if counts.size > 1 and level + 1 >= counts.size:
             raise ValueError("NumSam schedule exhausted before seed selection")
-        target=int(counts[0] if counts.size==1 else counts[level+1])
-        xs,ys=SedSlt(c["model"],r["x"],r["y"],target)
-        indices=None
-        c["xseed"],c["yseed"]=xs,ys;c["selected"].append(indices)
-        c["nc"]=xs.shape[1]
-        c["steps"]=int(np.floor(target/c["nc"]+0.5)) if c["nc"] else 0
-        if c["owner"].Verbose:
-            print(f"level {level+1}: samples={r['count']}, evaluations={c['Ncal'][-1]}")
+        target = int(counts[0] if counts.size == 1 else counts[level + 1])
+        xs, ys = SedSlt(context["model"], record["x"], record["y"], target)
+        indices = None
+        context["xseed"], context["yseed"] = xs, ys
+        context["selected"].append(indices)
+        context["nc"] = xs.shape[1]
+        context["steps"] = int(np.floor(target / context["nc"] + 0.5)) if context["nc"] else 0
+        if context["owner"].Verbose:
+            print(f"level {level+1}: samples={record['count']}, evaluations={context['Ncal'][-1]}")
 
-    def run_complete(self,c,r,phase):
-        if phase!="after_seeds": return False
-        if c["nc"]<=0 or len(c["x"])==c["limit"]: return True
-        c["complete"]=bool(c["model"].FlgCvg)
-        return c["complete"]
+    def run_complete(self, context, record, phase):
+        if phase != "after_seeds":
+            return False
+        if context["nc"] <= 0 or len(context["x"]) == context["limit"]:
+            return True
+        context["complete"] = bool(context["model"].FlgCvg)
+        return context["complete"]
 
-    def finish_run(self,c):
-        return dict(x=c["x"],y=c["y"],g=c["g"],Nsam=np.asarray(c["Nsam"]),
-                    Nsze=np.asarray(c["Nsze"]),Ncal=np.asarray(c["Ncal"]),
-                    selected=c["selected"],sigma=c["sigma"],flg_cvg=c["complete"],
-                    terminal=bool(c["model"].FlgCvg),Nite=len(c["x"]),intBay=c["model"])
+    def finish_run(self, context):
+        return dict(
+            x=context["x"],
+            y=context["y"],
+            g=context["g"],
+            Nsam=np.asarray(context["Nsam"]),
+            Nsze=np.asarray(context["Nsze"]),
+            Ncal=np.asarray(context["Ncal"]),
+            selected=context["selected"],
+            sigma=context["sigma"],
+            flg_cvg=context["complete"],
+            terminal=bool(context["model"].FlgCvg),
+            Nite=len(context["x"]),
+            intBay=context["model"],
+        )
 

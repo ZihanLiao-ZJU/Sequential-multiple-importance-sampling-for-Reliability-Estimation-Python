@@ -50,6 +50,8 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 
 ## Repository structure
 
+Every toolbox includes the same `SeMCS(sampler).RunIte()` loop. Method classes own initialization, intermediate updates, seed selection and convergence. Fixed MCMC options are sampler attributes; evolving proposal scales and trajectory times are stored in the model's `G`. Each repository runs independently.
+
 ```text
 ├── LICENSE
 ├── README.md
@@ -119,7 +121,7 @@ from semis_rel import Ex1, SeMIS_low_dimension, SeMCS, aCS, MIS
 
 Tfun = Ex1()
 IntBay = SeMIS_low_dimension(Tfun)     # SeMIS_high_dimension(Tfun) for n >= 20
-semcs = SeMCS(IntBay, aCS())
+semcs = SeMCS(aCS(IntBay))
 semcs.NumSam = 1000                    # sample size per level (N)
 
 out_semcs = semcs.RunIte()             # sequential sampling (Algorithm 1)

@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 from .._utils import flat, reshape_F, tail_shape
-from ..operations_on_logarithmic_values import logsum
+from ..log_operations import logsum
 
 
 def WgtMis_Blc(intBay, u, y, g, log_z):

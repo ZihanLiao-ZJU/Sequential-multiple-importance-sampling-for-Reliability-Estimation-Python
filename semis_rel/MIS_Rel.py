@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 from ._utils import flat, nanmax, reshape_F, tail_shape
-from .operations_on_logarithmic_values import logmean, logsum
+from .log_operations import logmean, logsum
 from .support_functions.MisInt import MisInt
 from .support_functions.MoveBlock import MoveBlock
 from .support_functions.WgtMis_Blc import WgtMis_Blc
@@ -11,7 +11,7 @@ from .support_functions.WgtMis_Blc import WgtMis_Blc
 _REALMIN = np.finfo(float).tiny
 
 
-class MIS:
+class MIS_Rel:
     """Multiple-importance-sampling reliability estimator (Pf + CoV bounds).
 
     Failure-probability estimator (Eqn. 9-10, 33) and single-run uncertainty
@@ -178,3 +178,6 @@ class MIS:
             y_norm[ite + 1][0] = y_norm[ite + 1][0] - log_z[ite + 1]   # Eqn. 32
             log_H[ite] = reshape_F(lh, tail_shape(y[ite]))
         return log_z, y_norm, log_H
+
+# Unified-entry compatibility name.
+MIS = MIS_Rel

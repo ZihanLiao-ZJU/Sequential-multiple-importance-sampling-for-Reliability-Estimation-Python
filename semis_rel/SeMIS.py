@@ -65,3 +65,23 @@ class ReliabilityMethod(Method):
                     Nsze=np.asarray(c["Nsze"]),Ncal=np.asarray(c["Ncal"]),
                     selected=c["selected"],sigma=c["sigma"],flg_cvg=c["complete"],
                     terminal=bool(c["model"].FlgCvg),Nite=len(c["x"]),intBay=c["model"])
+
+
+from semcs_core import LegacyFacade
+
+class SeMIS(LegacyFacade):
+    """Original two-argument entry point using the shared sequential engine.
+
+    A bound sampler can also be passed alone, preserving the unified entry API.
+    """
+    default_verbose = False
+
+    def __init__(self, IntBay, Sampler=None):
+        if Sampler is None:
+            Sampler = IntBay
+        else:
+            Sampler.BayStc = IntBay
+        super().__init__(Sampler, ReliabilityMethod())
+
+# Compatibility for the unified one-argument public entry point.
+SeMCS = SeMIS

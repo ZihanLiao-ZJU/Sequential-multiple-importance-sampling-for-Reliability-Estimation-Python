@@ -92,4 +92,5 @@ class SuS:
     def FlgCvg(self):
         return bool(self.G["parameters"] <= 0)
 
-    RunOptions = dict(SeedFunction=SedSlt)
+
+    SedSlt = SedSlt

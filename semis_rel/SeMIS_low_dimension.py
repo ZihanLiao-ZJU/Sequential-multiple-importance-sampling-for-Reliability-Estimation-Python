@@ -130,4 +130,5 @@ class SeMIS_low_dimension:
     def FlgCvg(self):
         return bool(self.G["l"] <= 0)
 
-    RunOptions = dict(SeedFunction=SedSlt)
+
+    SedSlt = SedSlt

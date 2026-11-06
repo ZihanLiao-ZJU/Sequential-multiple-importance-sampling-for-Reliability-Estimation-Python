@@ -5,7 +5,7 @@ from .ResRat import ResRat
 from .UpdY import UpdY
 
 
-def SedSlt(IntBay, u, y, N):
+def SedSlt(IntBay, u, y, N, rng=None):
     """Select the seeds for the next iteration (Eqn. 24):
     S_{i+1} = {k : g(U_k^(i)) < l_{i+1}}, implemented by weighted resampling
     with weight proportional to the new ISF L_{i+1}.

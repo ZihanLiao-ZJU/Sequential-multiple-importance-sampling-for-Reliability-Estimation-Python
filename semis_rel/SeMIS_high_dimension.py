@@ -23,7 +23,6 @@ def _pls_predict(beta, u):
     return g_hat
 
 
-from .SeMCS import prescribed_state
 from .support_functions.SedSlt import SedSlt
 
 class SeMIS_high_dimension:
@@ -131,98 +130,5 @@ class SeMIS_high_dimension:
     def FlgCvg(self):
         return bool(self.G["l"] <= 0)
 
-    def run_defaults(self):
-        return dict(Verbose=False)
+    RunOptions = dict(SeedFunction=SedSlt)
 
-    def start_run(self, owner, sampler):
-        owner.IntBay.G = dict(owner.IntBay.G, p=owner.ConPrb)
-        counts = np.atleast_1d(owner.NumSam).astype(int)
-        if np.any(counts < 1) or owner.MaxIte < 2:
-            raise ValueError("NumSam must be positive and MaxIte at least 2")
-        model = copy.copy(owner.IntBay)
-        if len(owner.G):
-            specified = copy.deepcopy(owner.G[0])
-            initial_mapping = isinstance(specified, dict)
-            if not isinstance(specified, dict):
-                specified = dict(parameters=specified)
-            model.G = prescribed_state(model.G, specified, initial=initial_mapping)
-        sampler = copy.copy(sampler)
-        sampler.BayStc = model
-        return dict(
-            owner=owner,
-            model=model,
-            sampler=sampler,
-            limit=owner.MaxIte - 1,
-            counts=counts,
-            nc=int(counts[0]),
-            steps=1,
-            xseed=None,
-            yseed=None,
-            x=[],
-            y=[],
-            g=[copy.deepcopy(model.G)],
-            Nsam=[],
-            Nsze=[],
-            Ncal=[],
-            selected=[],
-            sigma=[],
-            complete=False,
-        )
-
-    def advance_level(self, context, record, level):
-        context["sigma"].append(getattr(context["sampler"], "sigma", None))
-
-        model = context["model"]
-        if level + 1 < len(context["owner"].G):
-            model = copy.copy(model)
-            previous = model.G
-            specified = copy.deepcopy(context["owner"].G[level + 1])
-            if not isinstance(specified, dict):
-                specified = dict(parameters=specified)
-            model.G = prescribed_state(previous, specified)
-        else:
-            y, _, model, extra = model.UpdObj(record["x"], record["y"], context["owner"].ConPrb)
-            context["y"][-1] = y
-            record["y"] = y
-            context["Ncal"][-1] += extra
-        context["model"] = model
-        context["sampler"].BayStc = model
-        context["g"].append(copy.deepcopy(model.G))
-
-    def select_run_seeds(self, context, record, level):
-        counts = context["counts"]
-        if counts.size > 1 and level + 1 >= counts.size:
-            raise ValueError("NumSam schedule exhausted before seed selection")
-        target = int(counts[0] if counts.size == 1 else counts[level + 1])
-        xs, ys = SedSlt(context["model"], record["x"], record["y"], target)
-        indices = None
-        context["xseed"], context["yseed"] = xs, ys
-        context["selected"].append(indices)
-        context["nc"] = xs.shape[1]
-        context["steps"] = int(np.floor(target / context["nc"] + 0.5)) if context["nc"] else 0
-        if context["owner"].Verbose:
-            print(f"level {level+1}: samples={record['count']}, evaluations={context['Ncal'][-1]}")
-
-    def run_complete(self, context, record, phase):
-        if phase != "after_seeds":
-            return False
-        if context["nc"] <= 0 or len(context["x"]) == context["limit"]:
-            return True
-        context["complete"] = bool(context["model"].FlgCvg)
-        return context["complete"]
-
-    def finish_run(self, context):
-        return dict(
-            x=context["x"],
-            y=context["y"],
-            g=context["g"],
-            Nsam=np.asarray(context["Nsam"]),
-            Nsze=np.asarray(context["Nsze"]),
-            Ncal=np.asarray(context["Ncal"]),
-            selected=context["selected"],
-            sigma=context["sigma"],
-            flg_cvg=context["complete"],
-            terminal=bool(context["model"].FlgCvg),
-            Nite=len(context["x"]),
-            intBay=context["model"],
-        )

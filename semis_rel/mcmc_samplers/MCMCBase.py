@@ -64,7 +64,7 @@ class MCMCBase:
             if nc != args[0] or ns != args[1] or nc < 1 or ns < 1:
                 raise ValueError("Chain and step counts must be positive integers.")
             u = (
-                np.asarray(b.SamGen(nc), dtype=float)
+                np.asarray(b.SamGen(nc, rng=self.rng), dtype=float)
                 if hasattr(b, "SamGen")
                 else L @ self._randn(d, nc)
             )

@@ -1,12 +1,10 @@
-from .SeMCS import state_property
 import copy
-
 import numpy as np
 from scipy.stats import norm
-
-from ._utils import flat
+from ._utils import state_property, flat
 from .support_functions.logGauss import logGauss
 from .surrogates import plsregress
+from .support_functions.SedSlt import SedSlt
 
 
 def _pls_predict(beta, u):
@@ -23,10 +21,7 @@ def _pls_predict(beta, u):
     return g_hat
 
 
-from .support_functions.SedSlt import SedSlt
-
 class SeMIS_high_dimension:
-    Nsam = state_property("Nsam",1000)
     """SeMIS with Nataf transformation for structural reliability problems.
 
     High-dimensional variant: PLS-based hybrid truncation (Eqn. 26).
@@ -34,6 +29,8 @@ class SeMIS_high_dimension:
       rPDF pi_i(u) = phi_n(u; sigma^2 I)                             (Eqn. 12)
       ISF  L_i(u)  = I[g(u) < l_i] * prod_m I[g_hat_m(u) <= l_hat_m]  (Eqn. 20)
     """
+
+    Nsam = state_property("Nsam", 1000)
 
     def __init__(self, PF):
         self.TF = PF
@@ -131,4 +128,3 @@ class SeMIS_high_dimension:
         return bool(self.G["l"] <= 0)
 
     RunOptions = dict(SeedFunction=SedSlt)
-

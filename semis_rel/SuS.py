@@ -5,19 +5,22 @@ class does not run iterations; SeMCS owns sampling and stopping.
 Both coordinate selectors store Gaussian u; they choose PF.Dist or PF.Rdis
 to map u to physical performance-function inputs.
 """
-from .SeMCS import state_property
+
 import copy
 import numpy as np
-
-
+from ._utils import state_property
 from .support_functions.SedSlt import SedSlt
 
+
 class SuS:
-    p = state_property("p",0.1)
-    Nsam = state_property("Nsam",1000)
-    coordinate_system = state_property("coordinate_system","standard_normal")
-    threshold_rule = state_property("threshold_rule","hazen")
-    clip_threshold = state_property("clip_threshold",True)
+    """Scalar Gaussian-reference ISD with source-specific threshold rules."""
+
+    p = state_property("p", 0.1)
+    Nsam = state_property("Nsam", 1000)
+    coordinate_system = state_property("coordinate_system", "standard_normal")
+    threshold_rule = state_property("threshold_rule", "hazen")
+    clip_threshold = state_property("clip_threshold", True)
+
     def __init__(self, PF, coordinate_system="standard_normal",
                  threshold_rule="hazen", clip_threshold=True):
         if coordinate_system not in ("standard_normal", "physical"):
@@ -90,4 +93,3 @@ class SuS:
         return bool(self.G["parameters"] <= 0)
 
     RunOptions = dict(SeedFunction=SedSlt)
-

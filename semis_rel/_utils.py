@@ -98,3 +98,15 @@ def randi(n, k):
 def randsample(n, k, weights):
     """MATLAB randsample(n, k, true, w): k draws with replacement, 0-based indices."""
     return np.asarray(_rng.randsample(n, k, weights), dtype=int)
+
+
+def state_property(name, default=None):
+    """Expose a model parameter stored in its evolving G state."""
+
+    def get(self):
+        return self.G.get(name, default)
+
+    def set_(self, value):
+        self.G = dict(getattr(self, "G", {}), **{name: value})
+
+    return property(get, set_)

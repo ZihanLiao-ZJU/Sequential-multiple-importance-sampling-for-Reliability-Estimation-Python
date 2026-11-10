@@ -106,17 +106,15 @@ Every toolbox includes the same `SeMCS(sampler).RunIte()` loop. Method classes o
 
 ## Quick start
 
-Set `MaxIte` to the maximum number of sampled levels. A scalar `NumSam` is reused; a vector is a finite per-level budget. The run returns when either limit is reached, and `flg_cvg` reports the method's own convergence criterion. Entries in `G` patch intermediate states; omitted fields and carried `lambda`/`HMC_time` are retained.
-
-Run the driver from the repository root:
+Run one Example 1 simulation from the repository root, using 1000 samples per level and the `aCS` sampler:
 
 ```bash
-python drive_SeMIS.py
+python drive_SeMIS.py --example Ex1 --samples 1000 --sampler aCS --nrun 1
 ```
 
-By default this runs Example 1 (`Ex1`) with 100 independent runs and prints the estimated failure probability, its empirical CoV, and the average number of performance-function evaluations. The MATLAB driver uses `parfor`; here `--workers 4` runs the independent runs in 4 processes. Other options: `--example Ex10` selects an example, `--nrun` sets the number of runs, `--cov` adds the single-run CoV bounds and `--seed` fixes the random seeds.
+Change `--example`, `--samples` and `--sampler` to select the problem, scalar sample size and MCMC sampler. `--nrun` controls independent runs; `--seed` fixes the random seeds.
 
-The same steps from Python code:
+The same single run from Python:
 
 ```python
 from semis_rel import Ex1, SeMIS_low_dimension, SeMCS, aCS, MIS
@@ -124,12 +122,11 @@ from semis_rel import Ex1, SeMIS_low_dimension, SeMCS, aCS, MIS
 Tfun = Ex1()
 IntBay = SeMIS_low_dimension(Tfun)     # SeMIS_high_dimension(Tfun) for n >= 20
 semcs = SeMCS(aCS(IntBay))
-semcs.NumSam = 1000                    # sample size per level (N)
+semcs.NumSam = 1000                    # samples per level
 
-out_semcs = semcs.RunIte()             # sequential sampling (Algorithm 1)
-mis = MIS(out_semcs)               # MIS estimator (Eqn. 9-10, 33)
+out_semcs = semcs.RunIte()
+mis = MIS(out_semcs)
 print(mis.Pf_hat, out_semcs["Ncal"].sum())
-cv_lw, cv_up = mis.estimateCov()       # optional single-run CoV bounds (Eqn. 34-58)
 ```
 
 ## Built-in examples

@@ -2,8 +2,7 @@
 
 Python implementation of **Sequential Multiple Importance Sampling (SeMIS)** for estimating small failure probabilities, including in high-dimensional problems. This is a line-by-line port of the MATLAB code in [Sequential-multiple-importance-sampling-for-Reliability-Estimation](https://github.com/ZihanLiao-ZJU/Sequential-multiple-importance-sampling-for-Reliability-Estimation), which accompanies the paper:
 
-> **Sequential multiple importance sampling for robust and efficient (possibly high-dimensional) reliability estimation.**
-> *Mechanical Systems and Signal Processing*, 259 (2026) 114798. doi: [10.1016/j.ymssp.2026.114798](https://doi.org/10.1016/j.ymssp.2026.114798)
+> Xia, W., Liao, Z., & Li, B. (2026). Sequential multiple importance sampling for robust and efficient (possibly high-dimensional) reliability estimation. *Mechanical Systems and Signal Processing, 259*, Article 114798. [https://doi.org/10.1016/j.ymssp.2026.114798](https://doi.org/10.1016/j.ymssp.2026.114798)
 
 ## Contents
 
@@ -231,9 +230,9 @@ Signed-log arithmetic retains an inherited limitation: an all-negative signed-lo
 
 ## Citation
 
-If you use this code in your research, please cite:
+If you use this toolbox in your research, please cite:
 
-> Xia, W., Liao, Z., & Li, B. (2026). Sequential multiple importance sampling for robust and efficient (possibly high-dimensional) reliability estimation. *Mechanical Systems and Signal Processing*, 259, 114798. https://doi.org/10.1016/j.ymssp.2026.114798
+> Xia, W., Liao, Z., & Li, B. (2026). Sequential multiple importance sampling for robust and efficient (possibly high-dimensional) reliability estimation. *Mechanical Systems and Signal Processing, 259*, Article 114798. [https://doi.org/10.1016/j.ymssp.2026.114798](https://doi.org/10.1016/j.ymssp.2026.114798)
 
 ```bibtex
 @article{xia2026sequential,

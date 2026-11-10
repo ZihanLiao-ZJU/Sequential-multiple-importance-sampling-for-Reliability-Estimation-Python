@@ -53,6 +53,7 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 Every toolbox includes the same `SeMCS(sampler).RunIte()` loop. Method classes own initialization, intermediate updates, seed selection and convergence. Fixed MCMC options are sampler attributes; evolving proposal scales and trajectory times are stored in the model's `G`. Each repository runs independently.
 
 ```text
+.
 ├── LICENSE
 ├── README.md
 ├── drive_SeMIS.py
@@ -249,3 +250,4 @@ If you use this code in your research, please cite:
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+

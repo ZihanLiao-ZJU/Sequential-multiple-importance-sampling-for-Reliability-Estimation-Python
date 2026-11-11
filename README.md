@@ -49,8 +49,6 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 
 ## Repository structure
 
-Every toolbox includes the same `SeMCS(sampler).RunIte()` loop. Method classes own initialization, intermediate updates, seed selection and convergence. Fixed MCMC options are sampler attributes; evolving proposal scales and trajectory times are stored in the model's `G`. Each repository runs independently.
-
 ```text
 .
 ├── LICENSE

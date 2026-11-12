@@ -104,32 +104,21 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 
 ## Quick start
 
-Run one Example 1 simulation from the repository root, using 1000 samples per level and the `aCS` sampler:
+Edit `example`, `ndim`, `N`, `Nrun` and `SamplerClass` inside `drive_SeMIS.py`. Select `SamplerClass = aCS` (the default), or choose another supplied sampler: `CW_aMH`, `aCS`, `HMC` or `ES`.
+
+The script defaults to Example 1, 1000 samples per level and 100 runs. `ndim` applies to Examples 10–12; the other examples have fixed dimensions. For a single run, set `Nrun = 1` inside the script.
+
+Run the chosen script from the repository root:
 
 ```bash
-python drive_SeMIS.py --example Ex1 --samples 1000 --sampler aCS --nrun 1
+python drive_SeMIS.py
 ```
 
-Change `--example`, `--samples` and `--sampler` to select the problem, scalar sample size and MCMC sampler. `--nrun` controls independent runs; `--seed` fixes the random seeds.
-
-The same single run from Python:
-
-```python
-from semis_rel import Ex1, SeMIS_low_dimension, SeMCS, aCS, MIS
-
-Tfun = Ex1()
-IntBay = SeMIS_low_dimension(Tfun)     # SeMIS_high_dimension(Tfun) for n >= 20
-semcs = SeMCS(aCS(IntBay))
-semcs.NumSam = 1000                    # samples per level
-
-out_semcs = semcs.RunIte()
-mis = MIS(out_semcs)
-print(mis.Pf_hat, out_semcs["Ncal"].sum())
-```
+Use multiple runs to estimate statistics across independent runs.
 
 ## Built-in examples
 
-Select an example with `--example`, or by editing `build` in `drive_SeMIS.py`. The examples are numbered as in Tables 1 and 4 of the paper; `semis_rel.PF_REF` holds the reference values.
+Set `example` in `drive_SeMIS.py` to `"Ex1"` through `"Ex12"`. The examples are numbered as in Tables 1 and 4 of the paper; `semis_rel.PF_REF` holds the reference values.
 
 | Example | Description | Dimension | `Pf_ref` |
 |---|---|---|---|
@@ -146,7 +135,7 @@ Select an example with `--example`, or by editing `build` in `drive_SeMIS.py`. T
 | `Ex11(50)` | nonlinear performance function | 50 | 4.75e-6 |
 | `Ex12(50)` | linear, lognormal inputs | 50 | 1.91e-3 |
 
-The driver uses `SeMIS_high_dimension` (PLS-based truncation) for n ≥ 20, i.e. for `Ex10`–`Ex12`, and `SeMIS_low_dimension` (Kriging-based truncation) otherwise; `--ndim` sets the dimension of `Ex10`–`Ex12`.
+The driver uses `SeMIS_high_dimension` (PLS-based truncation) for n ≥ 20, i.e. for `Ex10`–`Ex12`, and `SeMIS_low_dimension` (Kriging-based truncation) otherwise; `ndim` sets the dimension of `Ex10`–`Ex12`.
 
 ## Using a custom performance function
 
@@ -192,7 +181,7 @@ The driver prints the following quantities, averaged over the independent runs:
 
 ## Optional single-run CoV bounds
 
-The paper (Eqn. 34–58, Appendices A–C) derives analytical bounds of the CoV from a single run, using a three-term decomposition (MCS noise, normalizing-constant noise and cross-term noise). This is disabled by default. To enable it, run the driver with `--cov`, or call
+The paper (Eqn. 34–58, Appendices A–C) derives analytical bounds of the CoV from a single run, using a three-term decomposition (MCS noise, normalizing-constant noise and cross-term noise). This is disabled by default. To enable it, set `cov = True` inside the driver, or call
 
 ```python
 cv_lw, cv_up = mis.estimateCov()   # single-run CoV bounds (Eqn. 34–58)
@@ -220,8 +209,6 @@ Signed-log arithmetic retains an inherited limitation: an all-negative signed-lo
 - The Kriging predictions are computed one query point at a time, in buffers with a fixed memory alignment, so the prediction at a sample does not depend on the surrounding query batch. This matters when `g_hat <= l_hat` compares predictions from separate calls at a selected seed attaining the maximum: round-off can otherwise place that seed outside the ISD support.
 - `RunIte` returns a dictionary instead of a struct, and the ISD parameters `G` of the Kriging and PLS variants are dictionaries.
 - Arrays keep the MATLAB layout (`Ndim × Nc × Ns`, flattened in column-major order); Python indices start at 0.
-- Random numbers are drawn through `semis_rel._utils` (`randn`, `rand`, `randperm`, `randi`, `randsample`), backed by NumPy; `np.random.seed` fixes a run.
-- `drive_SeMIS.py` takes the example and options on the command line and runs the independent runs in parallel processes with `--workers` (MATLAB: `parfor`).
 
 ## Citation
 

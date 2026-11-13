@@ -20,22 +20,23 @@ def summarize(example, algorithm, N, repeats, records):
 
 
 # %% Problem and sampling settings
-example = "Ex1"             # Ex1 ... Ex12
-ndim = 2                    # Dimension for Ex10-Ex12
+Tfun = Ex1()
+# Tfun = Ex10(50)            # Examples 10–12 accept a dimension
 N = 1000                    # Constant samples per level
 Nrun = 100                  # Set to 1 for a single run
 SamplerClass = aCS          # CW_aMH, aCS, HMC or ES
 cov = False                 # Optional single-run CoV bounds
-HIGH_DIM = ("Ex10", "Ex11", "Ex12")
+example = type(Tfun).__name__
+
+# %% Model and sampler
+model = SeMIS_high_dimension(Tfun) if Tfun.Ndim >= 20 else SeMIS_low_dimension(Tfun)
+simulation = SeMCS(SamplerClass(model))
+simulation.NumSam = N
 
 # %% Run simulations
 records = []
 for i in range(Nrun):
-    Tfun = globals()[example](ndim) if example in HIGH_DIM else globals()[example]()
-    IntBay = SeMIS_high_dimension(Tfun) if Tfun.Ndim >= 20 else SeMIS_low_dimension(Tfun)
-    engine = SeMCS(SamplerClass(IntBay))
-    engine.NumSam = N
-    out = engine.RunIte()
+    out = simulation.RunIte()
     estimator = MIS(out)
     row = dict(probability=estimator.Pf_hat.tolist(),
                joint_calls=int(np.sum(out["Ncal"])),
@@ -49,7 +50,7 @@ for i in range(Nrun):
     records.append(row)
 results = summarize(example, "SeMIS", N, Nrun, records)
 
-Pf_ref = PF_REF.get(example) if example not in HIGH_DIM or ndim == 50 else None
+Pf_ref = PF_REF.get(example) if not isinstance(Tfun, (Ex10, Ex11, Ex12)) or Tfun.Ndim == 50 else None
 print(f"SeMIS results over {Nrun} independent runs ({example})")
 for j, mean in enumerate(results["mean"]):
     print(f"  P_hat_f: {mean:.4e}; CoV: {results['cov'][j]:.4f}")

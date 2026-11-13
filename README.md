@@ -104,9 +104,9 @@ The Gaussian process fit solves dense linear systems with up to 1000 points. If 
 
 ## Quick start
 
-Edit `example`, `ndim`, `N`, `Nrun` and `SamplerClass` inside `drive_SeMIS.py`. Select `SamplerClass = aCS` (the default), or choose another supplied sampler: `CW_aMH`, `aCS`, `HMC` or `ES`.
+Edit `Tfun`, `N`, `Nrun` and `SamplerClass` inside `drive_SeMIS.py`. Select `SamplerClass = aCS` (the default), or choose another supplied sampler: `CW_aMH`, `aCS`, `HMC` or `ES`.
 
-The script defaults to Example 1, 1000 samples per level and 100 runs. `ndim` applies to Examples 10–12; the other examples have fixed dimensions. For a single run, set `Nrun = 1` inside the script.
+The script defaults to Example 1, 1000 samples per level and 100 runs. Pass the dimension to the constructor for Examples 10–12, for example `Ex10(50)`. For a single run, set `Nrun = 1` inside the script.
 
 Run the chosen script from the repository root:
 
@@ -118,7 +118,7 @@ Use multiple runs to estimate statistics across independent runs.
 
 ## Built-in examples
 
-Set `example` in `drive_SeMIS.py` to `"Ex1"` through `"Ex12"`. The examples are numbered as in Tables 1 and 4 of the paper; `semis_rel.PF_REF` holds the reference values.
+Construct the selected performance function in the driver, for example `Tfun = Ex1()` or `Tfun = Ex10(50)`. The examples are numbered as in Tables 1 and 4 of the paper; `semis_rel.PF_REF` holds the reference values.
 
 | Example | Description | Dimension | `Pf_ref` |
 |---|---|---|---|
@@ -135,7 +135,7 @@ Set `example` in `drive_SeMIS.py` to `"Ex1"` through `"Ex12"`. The examples are 
 | `Ex11(50)` | nonlinear performance function | 50 | 4.75e-6 |
 | `Ex12(50)` | linear, lognormal inputs | 50 | 1.91e-3 |
 
-The driver uses `SeMIS_high_dimension` (PLS-based truncation) for n ≥ 20, i.e. for `Ex10`–`Ex12`, and `SeMIS_low_dimension` (Kriging-based truncation) otherwise; `ndim` sets the dimension of `Ex10`–`Ex12`.
+The driver uses `SeMIS_high_dimension` (PLS-based truncation) for n ≥ 20 and `SeMIS_low_dimension` (Kriging-based truncation) for smaller dimensions.
 
 ## Using a custom performance function
 
@@ -144,7 +144,7 @@ The driver uses `SeMIS_high_dimension` (PLS-based truncation) for n ≥ 20, i.e.
    - `Dist`: probabilistic model of the input vector `X`, a `Nataf` object built from a list of marginal distributions (`makedist`) and their correlation matrix;
    - `Ndim`, `Nfun`: input dimension and number of performance functions;
    - `EvlLSF(self, x)`: evaluates the performance function on the samples `x` (`Ndim × Nsam`, in the physical space given by `Dist`), where `g < 0` is the failure domain; for a single performance function, return a vector of length `Nsam` (SuS accepts either a row or column vector). `SuS` additionally accepts an `(Nfun, Nsam)` matrix, one performance function per row; its first row controls the sampling thresholds, while `MIS` retains all rows for estimation.
-3. Run SeMIS with `IntBay = SeMIS_low_dimension(MyProblem())` for n < 20 or `IntBay = SeMIS_high_dimension(MyProblem())` for n ≥ 20, as in the Python example above.
+3. Import your problem class and set `Tfun = MyProblem()` in `drive_SeMIS.py`. The script selects the intermediate model from `Tfun.Ndim`.
 
 Minimal example: a linear limit state in two standard normal variables, with `Pf = Φ(−3.5)`.
 
